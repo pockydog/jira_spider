@@ -22,8 +22,6 @@ class Jira:
 
     @classmethod
     def by_username(cls, user_worklogs):
-        # worklogs = jira.worklogs(issue)
-        # user_worklogs = [worklog for worklog in worklogs if worklog.author.name == user]
         for worklog in user_worklogs:
             a = worklog.timeSpent
             return a
@@ -40,9 +38,6 @@ class Jira:
         spent_time = list()
         status_list = list()
         user_list = list()
-
-
-        # f'assignee was {user} OR reporter = {user}'
         for user in tqdm(members_list):
             issues = jira.search_issues(f'assignee was {user} OR reporter = {user}')
             for issue in issues:
@@ -65,17 +60,6 @@ class Jira:
                 user_worklogs = [worklog for worklog in worklogs if worklog.author.name == user]
                 worklogs_ = Jira.by_username(user_worklogs=user_worklogs)
                 spent_time.append(worklogs_)
-        # Jira.export_excel(
-        #     summary=summary,
-        #     user=user_list,
-        #     project=project,
-        #     priority=priority,
-        #     str_creatd=str_creatd,
-        #     status_list=status_list,
-        #     spent_time=spent_time,
-        #     link=link
-        # )
-        # return True
         return summary, user_list, project, priority, str_creatd, status_list, spent_time, link
 
     @classmethod
