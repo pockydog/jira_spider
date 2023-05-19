@@ -6,35 +6,41 @@ import datetime
 
 
 class Jira:
+    # 基本設定
     domain = 'http://jira.trevi.cc/'
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
+
+    # 排除 Trevi group 不需要登記的人員列表
     block_list = [
         'DebbyChen', 'SashaLin', 'gitlab', 'hanklin',
         'cedric', 'billji', 'PeggyHuang', 'ahrizhou', 'MarsLi'
     ]
+
+    # 排除不需要顯示的狀態列表
     skip_ = ['Planning', '待办', 'Pending']
+
+    # 排除目前沒有使用的 project 列表, 暫未開啟使
     block_project_list = [
         'CCUattele', 'CKDT', 'Core', 'Block Chain', 'Lucky Hash',
         'QA-Automation-Group', 'Online Casino Management System', 'release',
         'WT', 'WT-NIU', 'WT_role_integration', 'WT_好路推薦', 'WT_後台顯示各項占成交收',
         'WT_百家樂']
-    END_TIME = ' 18:00'
 
     @classmethod
     def get_member_list(cls, jira):
+        """
+        取得所有 Trevi 員工資訊, 並移除'目標範圍外'的員工 --->'block_list'
+        """
         members = jira.group_members('TREVI')
         members_list = [member for member in members if member not in Jira.block_list]
         return members_list
 
     @classmethod
-    def by_username(cls, user_worklogs):
-        for worklog in user_worklogs:
-            a = worklog.timeSpent
-            return a
-
-    @classmethod
     def parse_week(cls):
+        """
+        取得本週的起始日期
+        """
         today = datetime.datetime.today()
         weekday = today.weekday()
         days_to_monday = datetime.timedelta(days=weekday)
@@ -45,6 +51,10 @@ class Jira:
 
     @classmethod
     def get_person_info(cls):
+        """
+        Main content
+        取得相關所需資料
+        """
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         members_list = Jira.get_member_list(jira=jira)
         summary = list()
@@ -52,16 +62,18 @@ class Jira:
         link = list()
         priority = list()
         project = list()
-        spent_time = list()
         status_list = list()
         user_list = list()
+        worklog_list = list()
         start, end = Jira.parse_week()
         for user in tqdm(members_list):
+            # 下條件式, 利用JQL
             issues = jira.search_issues(
                 f'updated > {start} '
                 f'AND updated < now()'
                 f'AND assignee was {user} OR reporter = {user}'
             )
+            # 取得資料 解析
             for issue in issues:
                 status = issue.fields.status.name
                 if status not in Jira.skip_:
@@ -79,15 +91,45 @@ class Jira:
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
                 worklogs = jira.worklogs(issue)
-                user_worklogs = [worklog for worklog in worklogs if worklog.author.name == user]
-                worklogs_ = Jira.by_username(user_worklogs=user_worklogs)
-                spent_time.append(worklogs_)
+                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
 
-        return summary, user_list, project, priority, str_creatd, status_list, spent_time, link
+        return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
+
+    @classmethod
+    def get_worklog_info(cls, worklogs, user):
+        """
+        取得 worklog 資料, 記載員工針對該工單所花費的時間
+        """
+        worklog_list = list()
+        week = Jira.parse_week_()
+        for work in worklogs:
+            started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
+            str_started = "".join(started)
+            if str_started in week:
+                # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
+                parse = str(work.author).lower().replace(' ', '')
+                if parse == user.lower():
+                    info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}, 負責人：{work.author}, Time:{str_started}']
+                    worklog_list.extend(info)
+        return worklog_list
+
+    @classmethod
+    def parse_week_(cls):
+        """
+        取得 一週 的 所有時間
+        """
+        today = datetime.datetime.today()
+        week_day = 5
+        week = ['20' + datetime.datetime.strftime(today - datetime.timedelta(today.weekday() - i), '%y-%m-%d') for i in
+                range(week_day)]
+        return week
 
     @classmethod
     def export_excel(cls):
-        summary, user_list, project, priority, str_creatd, status_list, spent_time, link = Jira.get_person_info()
+        """
+        匯出 且 存入 excel
+        """
+        summary, user_list, project, priority, str_creatd, status_list, worklog_list, link = Jira.get_person_info()
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
         sheet.write(0, 0, '')
@@ -97,7 +139,7 @@ class Jira:
         sheet.write(0, 4, 'priority')
         sheet.write(0, 5, 'created')
         sheet.write(0, 6, 'status')
-        sheet.write(0, 7, 'user_timespent')
+        sheet.write(0, 7, 'worklog')
         sheet.write(0, 8, 'link')
 
         for i in range(len(summary)):
@@ -108,10 +150,12 @@ class Jira:
             sheet.write(i + 1, 4, priority[i])
             sheet.write(i + 1, 5, str_creatd[i])
             sheet.write(i + 1, 6, status_list[i])
-            sheet.write(i + 1, 7, spent_time[i])
+            sheet.write(i + 1, 7, worklog_list[i])
             sheet.write(i + 1, 8, link[i])
+        # excel 檔案名稱
         file.save(f'pocky_friday.xls')
 
 
+# 執行檔
 if __name__ == '__main__':
     Jira.export_excel()
