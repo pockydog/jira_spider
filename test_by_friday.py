@@ -20,7 +20,7 @@ class Jira:
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
 
-    # 排除目前沒有使用的 project 列表, 暫未開啟使
+    # 排除目前沒有使用的 project 列表, 暫未開啟使用
     block_project_list = [
         'CCUattele', 'CKDT', 'Core', 'Block Chain', 'Lucky Hash',
         'QA-Automation-Group', 'Online Casino Management System', 'release',
@@ -76,6 +76,8 @@ class Jira:
             )
             # 取得資料 解析
             for issue in issues:
+                worklogs = jira.worklogs(issue)
+                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
                 status = issue.fields.status.name
                 if status not in Jira.skip_:
                     status_list.append(status)
@@ -110,8 +112,9 @@ class Jira:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
                 parse = str(work.author).lower().replace(' ', '')
                 if parse == user.lower():
-                    info = [f'\n Time：{work.timeSpent}, 內容：{work.comment}']
+                    info = [f'Time：{work.timeSpent}, 內容：{work.comment}']
                     worklog_list.extend(info)
+
         return worklog_list
 
     @classmethod
@@ -154,10 +157,11 @@ class Jira:
             sheet.write(i + 1, 7, worklog_list[i])
             sheet.write(i + 1, 8, link[i])
         # excel 檔案名稱
-        file.save(f'pocky_friday.xls')
+        start, end = Jira.parse_week()
+        file.save(f'JIRA_{end}.xls')
 
     @classmethod
-    def test_vicky(cls):
+    def test_for_worklog(cls):
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         issues = jira.search_issues('project = PT AND issuetype = 故障')
         for i in issues:
@@ -166,7 +170,6 @@ class Jira:
                 started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
                 info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}']
                 # 負責人：{work.author}, Time:{str_started}
-                print(info)
 
 
 # 執行檔
@@ -176,4 +179,3 @@ if __name__ == '__main__':
 # 缺少預計完成時間
 # 將代辦的項目新增一個excel分開
 # 大家：預計完成時間 / 目前趴數
-# 確認worklog

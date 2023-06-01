@@ -18,14 +18,14 @@ class Jira:
     ]
 
     # 排除不需要顯示的狀態列表
-    skip_ = ['Planning', '待办', 'Pending']
+    skip_ = ['Planning', 'Pending']
 
-    # 排除目前沒有使用的 project 列表, 暫未開啟使
+    # 排除目前沒有使用的 project 列表, 暫未開啟使用
     block_project_list = [
         'CCUattele', 'CKDT', 'Core', 'Block Chain', 'Lucky Hash',
         'QA-Automation-Group', 'Online Casino Management System', 'release',
         'WT', 'WT-NIU', 'WT_role_integration', 'WT_好路推薦', 'WT_後台顯示各項占成交收',
-        'WT_百家樂', 'Block Chain']
+        'WT_百家樂']
 
     @classmethod
     def get_member_list(cls, jira):
@@ -66,12 +66,13 @@ class Jira:
         user_list = list()
         worklog_list = list()
         start, end = Jira.parse_week()
+
         for user in tqdm(members_list):
             # 下條件式, 利用JQL
             issues = jira.search_issues(
                 f'updated > {start} '
                 f'AND updated < now()'
-                f'AND assignee was {user} OR reporter = {user}'
+                f'AND (assignee was {user} OR reporter = {user})'
             )
             # 取得資料 解析
             for issue in issues:
@@ -80,17 +81,14 @@ class Jira:
                     status_list.append(status)
                 else:
                     continue
-                project += [issue.fields.project.name]
-                # projects = issue.fields.project.name
-                # if projects not in Jira.block_project_list:
-                #     project.append(projects)
-                # else:
-                #     continue
                 user_list += [user]
                 summary += [issue.fields.summary]
+                project += [issue.fields.project.name]
+
                 created = issue.fields.created
                 created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
                 str_creatd += ["".join(created)]
+
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
                 worklogs = jira.worklogs(issue)
@@ -108,11 +106,12 @@ class Jira:
         for work in worklogs:
             started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
             str_started = "".join(started)
+
             if str_started in week:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
                 parse = str(work.author).lower().replace(' ', '')
                 if parse == user.lower():
-                    info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}, 負責人：{work.author}, Time:{str_started}']
+                    info = [f'\n Time：{work.timeSpent}, 內容：{work.comment}']
                     worklog_list.extend(info)
         return worklog_list
 
@@ -134,7 +133,7 @@ class Jira:
         """
         summary, user_list, project, priority, str_creatd, status_list, worklog_list, link = Jira.get_person_info()
         file = xlwt.Workbook('encoding = utf-8')
-        sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
+        sheet = file.add_sheet(f'jira', cell_overwrite_ok=True)
         sheet.write(0, 0, '')
         sheet.write(0, 1, 'user_name')
         sheet.write(0, 2, 'project')
@@ -156,9 +155,23 @@ class Jira:
             sheet.write(i + 1, 7, worklog_list[i])
             sheet.write(i + 1, 8, link[i])
         # excel 檔案名稱
-        file.save(f'pocky_friday.xls')
+        start, end = Jira.parse_week()
+        file.save(f'JIRA_{end}.xls')
+
+    @classmethod
+    def test_vicky(cls):
+        jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
+        issues = jira.search_issues('project = PT AND issuetype = 故障')
+        for i in issues:
+            worklogs = jira.worklogs(i)
+            for work in worklogs:
+                started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
+                info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}']
+                # 負責人：{work.author}, Time:{str_started}
 
 
 # 執行檔
 if __name__ == '__main__':
+
     Jira.export_excel()
+
