@@ -18,14 +18,7 @@ class Jira:
     ]
 
     # 排除不需要顯示的狀態列表
-    skip_ = ['Planning', 'Pending']
-
-    # 排除目前沒有使用的 project 列表, 暫未開啟使用
-    block_project_list = [
-        'CCUattele', 'CKDT', 'Core', 'Block Chain', 'Lucky Hash',
-        'QA-Automation-Group', 'Online Casino Management System', 'release',
-        'WT', 'WT-NIU', 'WT_role_integration', 'WT_好路推薦', 'WT_後台顯示各項占成交收',
-        'WT_百家樂']
+    skip_ = ['2', '2']
 
     @classmethod
     def get_member_list(cls, jira):
@@ -81,6 +74,8 @@ class Jira:
                     status_list.append(status)
                 else:
                     continue
+                worklogs = jira.worklogs(issue)
+                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
                 user_list += [user]
                 summary += [issue.fields.summary]
                 project += [issue.fields.project.name]
@@ -91,8 +86,6 @@ class Jira:
 
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
-                worklogs = jira.worklogs(issue)
-                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
 
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
@@ -102,18 +95,25 @@ class Jira:
         取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
         worklog_list = list()
-        week = Jira.parse_week_()
+        week = Jira.parse_week()
         for work in worklogs:
             started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
             str_started = "".join(started)
 
             if str_started in week:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
-                parse = str(work.author).lower().replace(' ', '')
+                parse = str(work.author.name).lower().replace(' ', '')
                 if parse == user.lower():
-                    info = [f'\n Time：{work.timeSpent}, 內容：{work.comment}']
+                    info = [f'Time：{work.timeSpent}', f'Name：{work.author.name}']
                     worklog_list.extend(info)
+
         return worklog_list
+
+    @classmethod
+    def parse_worklog_time(cls, worklog_list):
+        for w in worklog_list:
+            if 'Time:' in w:
+                print(w)
 
     @classmethod
     def parse_week_(cls):
@@ -154,24 +154,18 @@ class Jira:
             sheet.write(i + 1, 6, status_list[i])
             sheet.write(i + 1, 7, worklog_list[i])
             sheet.write(i + 1, 8, link[i])
+        sheet2 = file.add_sheet(f'project', cell_overwrite_ok=True)
+        sheet2.write(0, 4, 'worklog')
+        for i in range(len(worklog_list)):
+            sheet2.write(i + 1, 1, worklog_list[i])
+
+
+
         # excel 檔案名稱
         start, end = Jira.parse_week()
         file.save(f'JIRA_{end}.xls')
 
-    @classmethod
-    def test_vicky(cls):
-        jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
-        issues = jira.search_issues('project = PT AND issuetype = 故障')
-        for i in issues:
-            worklogs = jira.worklogs(i)
-            for work in worklogs:
-                started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-                info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}']
-                # 負責人：{work.author}, Time:{str_started}
-
 
 # 執行檔
 if __name__ == '__main__':
-
     Jira.export_excel()
-

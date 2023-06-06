@@ -33,7 +33,7 @@ class Jira:
         取得所有 Trevi 員工資訊, 並移除'目標範圍外'的員工 --->'block_list'
         """
         members = jira.group_members('TREVI')
-        members_list = [member for member in members if member not in Jira.block_list]
+        members_list = [member.lower() for member in members if member not in Jira.block_list]
         return members_list
 
     @classmethod
@@ -57,6 +57,7 @@ class Jira:
         """
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         members_list = Jira.get_member_list(jira=jira)
+        print(members_list)
         summary = list()
         str_creatd = list()
         link = list()
@@ -67,39 +68,33 @@ class Jira:
         worklog_list = list()
         start, end = Jira.parse_week()
 
-        for user in tqdm(members_list):
-            # 下條件式, 利用JQL
-            issues = jira.search_issues(
-                f'updated > {start} '
-                f'AND updated < now()'
-                f'AND (assignee was {user} OR reporter = {user})'
-            )
+        issues = jira.search_issues(
+            f'updated > {start} '
+            f'AND updated < now()')
             # 取得資料 解析
-            for issue in issues:
-                worklogs = jira.worklogs(issue)
-                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
-                status = issue.fields.status.name
-                if status not in Jira.skip_:
-                    status_list.append(status)
-                else:
-                    continue
-                user_list += [user]
-                summary += [issue.fields.summary]
-                project += [issue.fields.project.name]
+        for issue in issues:
+            worklogs = jira.worklogs(issue)
+            worklog_list += [Jira.get_worklog_info(worklogs=worklogs)]
+            user_list += [Jira.get_name(worklogs=worklogs)]
+            status = issue.fields.status.name
+            if status not in Jira.skip_:
+                status_list.append(status)
+            else:
+                continue
+            summary += [issue.fields.summary]
+            project += [issue.fields.project.name]
 
-                created = issue.fields.created
-                created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
-                str_creatd += ["".join(created)]
+            created = issue.fields.created
+            created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
+            str_creatd += ["".join(created)]
 
-                link += [issue.permalink()]
-                priority += [issue.fields.priority.name]
-                worklogs = jira.worklogs(issue)
-                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
+            link += [issue.permalink()]
+            priority += [issue.fields.priority.name]
 
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
     @classmethod
-    def get_worklog_info(cls, worklogs, user):
+    def get_worklog_info(cls, worklogs):
         """
         取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
@@ -109,13 +104,27 @@ class Jira:
             started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
             str_started = "".join(started)
             if str_started in week:
-                # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
-                parse = str(work.author).lower().replace(' ', '')
-                if parse == user.lower():
-                    info = [f'Time：{work.timeSpent}, 內容：{work.comment}']
-                    worklog_list.extend(info)
+                # # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
+                # info = [f'Time：{work.timeSpent}, Name:{work.author.name}']
+                worklog_list.extend(f'{work.timeSpent}+{work.author.name}')
 
         return worklog_list
+
+    @classmethod
+    def get_name(cls, worklogs):
+        """
+        取得 worklog 資料, 記載員工針對該工單所花費的時間
+        """
+        name_list = list()
+        week = Jira.parse_week_()
+        for work in worklogs:
+            started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
+            str_started = "".join(started)
+            if str_started in week:
+                # # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
+                name_list.append(work.author.name)
+        return name_list
+
 
     @classmethod
     def parse_week_(cls):
@@ -168,13 +177,19 @@ class Jira:
             worklogs = jira.worklogs(i)
             for work in worklogs:
                 started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-                info = [f'花費時間：{work.timeSpent}, 內容：{work.comment}']
+                info = [f'name:{work.author.name}, 時間：{work.timeSpent}']
+                print(info)
                 # 負責人：{work.author}, Time:{str_started}
 
 
 # 執行檔
 if __name__ == '__main__':
     Jira.export_excel()
+
+    # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
+
+    # print(Jira.get_member_list(jira=jira))
+    # print(Jira.test_for_worklog())
 
 # 缺少預計完成時間
 # 將代辦的項目新增一個excel分開
