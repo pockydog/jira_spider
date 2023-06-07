@@ -57,7 +57,6 @@ class Jira:
         """
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         members_list = Jira.get_member_list(jira=jira)
-        print(members_list)
         summary = list()
         str_creatd = list()
         link = list()
