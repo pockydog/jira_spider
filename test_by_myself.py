@@ -70,7 +70,7 @@ class Jira:
         issues = jira.search_issues(
             f'updated > {start} '
             f'AND updated < now()')
-            # 取得資料 解析
+        # 取得資料 解析
         for issue in issues:
             worklogs = jira.worklogs(issue)
             worklog_list += [Jira.get_worklog_info(worklogs=worklogs)]
@@ -123,7 +123,6 @@ class Jira:
                 # # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
                 name_list.append(work.author.name)
         return name_list
-
 
     @classmethod
     def parse_week_(cls):

@@ -109,8 +109,9 @@ class Jira:
             if str_started in week:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
                 parse = str(work.author).lower().replace(' ', '')
-                if parse.casefold() == user.lower().casefold():
-                    info = [f'Time：{work.timeSpent}, 內容：{work.comment}']
+                print(parse)
+                if parse == user.lower():
+                    info = [f'{work.timeSpent}/']
                     worklog_list.extend(info)
         return worklog_list
 
