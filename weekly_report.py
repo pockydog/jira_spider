@@ -94,6 +94,7 @@ class Jira:
 
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
+        print(worklog_list)
 
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
@@ -112,7 +113,6 @@ class Jira:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
                 parse = str(work.author).lower().replace(' ', '')
                 parse_a = str(work.author.name).lower().replace(' ', '')
-                print(work.author.name)
                 if parse == user.lower() or parse_a == user.lower():
                     info = [f'{work.timeSpent}']
                     worklog_list.extend(info)
@@ -174,15 +174,46 @@ class Jira:
                         f'{work.started}']
                 # 負責人：{work.author}, Time:{str_started}
     @classmethod
+    def count_timespant(cls):
+        timespent = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+             [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+             [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+             [], [], [], [], ['1d 2h', '1d 3h'], [], [], [], [], [], [], [], [], [], [], [], [], [], ['1h 30m'], [],
+             [], [], ['30m'], ['30m']]
+        result = list()
+        for time in timespent:
+            for sp_time in time:
+                print(sp_time)
+                # str_ = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '*0.01').replace(' ', '+')
+                # result = eval(str_)
+                # if time == []:
+                #     continue
+                # else:
+                #     time.
+
+
+        print(result)
+
+
+
+
+
+
+        #     if time != []:
+        #         result_.append(result)
+        #     else:
+        #         result_.extend([])
+        # print(result_)
+
+
+
+
+
 
 
 # 執行檔
 if __name__ == '__main__':
-    Jira.test_for_worklog()
+    Jira.count_timespant()
     # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
     # print(Jira.get_member_list(jira=jira))
 
-
-# 缺少預計完成時間
-# 將代辦的項目新增一個excel分開
-# 大家：預計完成時間 / 目前趴數
