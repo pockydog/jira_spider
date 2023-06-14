@@ -20,12 +20,6 @@ class Jira:
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
 
-    # 排除目前沒有使用的 project 列表, 暫未開啟使用
-    block_project_list = [
-        'CCUattele', 'CKDT', 'Core', 'Block Chain', 'Lucky Hash',
-        'QA-Automation-Group', 'Online Casino Management System', 'release',
-        'WT', 'WT-NIU', 'WT_role_integration', 'WT_好路推薦', 'WT_後台顯示各項占成交收',
-        'WT_百家樂']
 
     @classmethod
     def get_member_list(cls, jira):
@@ -65,7 +59,8 @@ class Jira:
         project = list()
         status_list = list()
         user_list = list()
-        worklog_list = list()
+        worklog_ = list()
+        worklog_list = None
         start, end = Jira.parse_week()
 
         for user in tqdm(members_list):
@@ -78,7 +73,8 @@ class Jira:
             # 取得資料 解析
             for issue in issues:
                 worklogs = jira.worklogs(issue)
-                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
+                worklog_ += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
+                worklog_list = Jira.count_timespant(timespent=worklog_)
                 status = issue.fields.status.name
                 if status not in Jira.skip_:
                     status_list.append(status)
@@ -87,14 +83,11 @@ class Jira:
                 user_list += [user]
                 summary += [issue.fields.summary]
                 project += [issue.fields.project.name]
-
                 created = issue.fields.created
                 created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
                 str_creatd += ["".join(created)]
-
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
-        print(worklog_list)
 
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
@@ -173,47 +166,34 @@ class Jira:
                 info = [f'000{summary}00花費時間：{work.timeSpent}, 內容：{work.author.name}時間：{work.started}, '
                         f'{work.started}']
                 # 負責人：{work.author}, Time:{str_started}
+
     @classmethod
-    def count_timespant(cls):
-        timespent = [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-             [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-             [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
-             [], [], [], [], ['1d 2h', '1d 3h'], [], [], [], [], [], [], [], [], [], [], [], [], [], ['1h 30m'], [],
-             [], [], ['30m'], ['30m']]
-        result = list()
+    def compute_cost(cls, sp_time):
+        cost = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+')
+        return cost
+
+    @classmethod
+    def count_timespant(cls, timespent):
+        a_list = list()
+        time_list = list()
         for time in timespent:
+            temp = list()
             for sp_time in time:
-                print(sp_time)
-                # str_ = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '*0.01').replace(' ', '+')
-                # result = eval(str_)
-                # if time == []:
-                #     continue
-                # else:
-                #     time.
+                str_ = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+')
+                result = eval(str_)
+                #     temp = [eval(cls.compute_cost(sp_time)) for sp_time in time]
 
+                temp.append(result)
+            time_list.append(temp)
+        for i in time_list:
+            a_list.append(sum(i))
 
-        print(result)
-
-
-
-
-
-
-        #     if time != []:
-        #         result_.append(result)
-        #     else:
-        #         result_.extend([])
-        # print(result_)
-
-
-
-
-
+        return a_list
 
 
 # 執行檔
 if __name__ == '__main__':
-    Jira.count_timespant()
+    # Jira.count_timespant()
+    Jira.export_excel()
     # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
     # print(Jira.get_member_list(jira=jira))
-
