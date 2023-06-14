@@ -27,7 +27,7 @@ class Jira:
         取得所有 Trevi 員工資訊, 並移除'目標範圍外'的員工 --->'block_list'
         """
         members = jira.group_members('TREVI')
-        members_list = [member for member in members if member not in Jira.block_list]
+        members_list = [member.lower() for member in members if member not in Jira.block_list]
 
         return members_list
 
@@ -80,7 +80,7 @@ class Jira:
                     status_list.append(status)
                 else:
                     continue
-                user_list += [user]
+                user_list += [user.lower()]
                 summary += [issue.fields.summary]
                 project += [issue.fields.project.name]
                 created = issue.fields.created
@@ -109,6 +109,7 @@ class Jira:
                 if parse == user.lower() or parse_a == user.lower():
                     info = [f'{work.timeSpent}']
                     worklog_list.extend(info)
+
         return worklog_list
 
     @classmethod
@@ -157,14 +158,18 @@ class Jira:
     @classmethod
     def test_for_worklog(cls):
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
-        issues = jira.search_issues('project = Blockchain_Mines ')
+        issues = jira.search_issues(f'updated >= 2023-06-12 '
+                                    f'AND updated <= now()'
+                                    'AND project = FT ')
+        # AND resolution = Unresolved ORDER BY priority DESC, updated DESC
         for i in issues:
             summary = [i.fields.summary]
             worklogs = jira.worklogs(i)
             for work in worklogs:
                 started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-                info = [f'000{summary}00花費時間：{work.timeSpent}, 內容：{work.author.name}時間：{work.started}, '
+                info = [f'000{summary}00花費時間：{work.timeSpent}, /  內容：{work.author.name.lower()} / 時間：{work.started}, '
                         f'{work.started}']
+                print(info)
                 # 負責人：{work.author}, Time:{str_started}
 
     @classmethod
@@ -174,21 +179,37 @@ class Jira:
 
     @classmethod
     def count_timespant(cls, timespent):
+        temp = list()
         a_list = list()
         time_list = list()
         for time in timespent:
-            temp = list()
-            for sp_time in time:
-                str_ = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+')
-                result = eval(str_)
-                #     temp = [eval(cls.compute_cost(sp_time)) for sp_time in time]
-
-                temp.append(result)
-            time_list.append(temp)
-        for i in time_list:
+            time_list = list()
+            for t in time:
+                cost = eval(cls.compute_cost(sp_time=t))
+                time_list.append(cost)
+            temp.append(time_list)
+        for i in temp:
             a_list.append(sum(i))
-
         return a_list
+            # print(timespent)
+            # temp = list()
+        #     for sp_time in time:
+        #
+        #         result = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+')
+        #         result = eval(result)
+        #         print(result)
+        #     time_list.append(result)
+        # print(time_list)
+        #         temp.append(result)
+        #     time_list.append(temp)
+        # a_list = [sum(i) for i in time_list]
+        # print(a_list)
+
+
+        # return a_list
+
+
+
 
 
 # 執行檔
