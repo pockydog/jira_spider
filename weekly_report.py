@@ -73,8 +73,8 @@ class Jira:
             # 取得資料 解析
             for issue in issues:
                 worklogs = jira.worklogs(issue)
-                worklog_ += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
-                worklog_list = Jira.count_timespant(timespent=worklog_)
+                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
+                # worklog_list = Jira.count_timespant(timespent=worklog_)
                 status = issue.fields.status.name
                 if status not in Jira.skip_:
                     status_list.append(status)
@@ -88,7 +88,7 @@ class Jira:
                 str_creatd += ["".join(created)]
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
-
+        print(len(summary))
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
     @classmethod
@@ -109,7 +109,6 @@ class Jira:
                 if parse == user.lower() or parse_a == user.lower():
                     info = [f'{work.timeSpent}']
                     worklog_list.extend(info)
-
         return worklog_list
 
     @classmethod

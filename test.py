@@ -74,16 +74,10 @@ class Jira:
         )
         # 取得資料 解析
         name_list = list()
-        week = ['2023-06-05', '2023-06-06', '2023-06-07', '2023-06-09', '2023-06-08']
         for issue in issues:
             worklogs = jira.worklogs(issue)
-            for work in worklogs:
-                started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-                str_started = "".join(started)
-                if str_started in week:
-                    name = work.author.name
-                    name_list.extend(name)
-        print(name_list)
+            worklog_list += [jira.get_worklog_info(worklogs=worklogs)]
+
 
                 # name_list += [work.author.name]
                 # print(name_list)

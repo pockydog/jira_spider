@@ -12,7 +12,8 @@ options = webdriver.ChromeOptions()
 options.add_experimental_option('detach', True)
 driver = webdriver.Chrome(options=options)
 url = 'https://jira.trevi.cc/login.jsp'
-urls = 'https://jira.trevi.cc/issues/?jql=updated%20%3E%3D%202023-06-01%20AND%20updated%20%3C%3D%202023-06-30'
+urls = 'https://jira.trevi.cc/issues/?jql=updated%20%3E%3D%202023-06-12%20AND%20updated%20%3C%3D%20now()'
+url_list = ['&startIndex=50', '&startIndex=100', '&startIndex=150', '&startIndex=200', '&startIndex=250']
 driver.get(url=url)
 driver.implicitly_wait(20)
 name = driver.find_element('id', 'login-form-username')
@@ -31,11 +32,24 @@ driver.implicitly_wait(20)
 condition = driver.find_element('id', 'advanced-search')
 driver.implicitly_wait(20)
 soup = BeautifulSoup(driver.page_source, 'html.parser')
-pro = soup.find('li', {'data-id': 'project'}).click()
-# condition.send_keys('updated >= 2023-06-01 AND updated <= 2023-06-30')
-# driver.implicitly_wait(20)
-# driver.find_element('xpath', '//*[@id="main"]/div/div[1]/form/div[1]/div[1]/div[1]/div[2]/button').click()
-# driver.get(url=urls)
+# pro = soup.find('li', {'data-id': 'project'}).click()
+# into_condition = soup.find('div', {'class': 'atlassian-autocomplete'}).click()
+condition.send_keys('updated >= 2023-06-12 AND updated <= now()')
+driver.implicitly_wait(20)
+driver.find_element('xpath', '//*[@id="main"]/div/div[1]/form/div[1]/div[1]/div[1]/div[2]/button').click()
+driver.get(url=urls)
+driver.implicitly_wait(20)
+a = soup.find_all('a', {'class': 'issue-link'})
+for i in a:
+    print(i.get('href'))
+
+
+# a = soup.find_all('a', {'class': 'issue-link'})
+# domain = [i.get('href') for i in a]
+# print(len(domain))
+
+
+
 
 # page = soup.find('div', {'class': 'pagination'})
 # page = page.find_all('a')
@@ -48,13 +62,23 @@ pro = soup.find('li', {'data-id': 'project'}).click()
 # urlss.append(urls)
 # print(urlss)
 #
-#
+# a = None
+# domain = None
 # for url_ in urlss:
 #     driver.get(url=url_)
 #     soup = BeautifulSoup(driver.page_source, 'html.parser')
 #     a = soup.find_all('a', {'class': 'issue-link'})
-#     test = soup.find_all('a', {'class': 'issue-link'})
-#
+#     print(url_)
+#     print(a)
+#     print('-------')
+#     domain = [i.get('href') for i in a]
+# print(domain)
+# print(len(domain))
+
+    # b = [i.get for i in a]
+# print(len(a))
+    # test = soup.find_all('a', {'class': 'issue-link'})
+
 #
 #     # pattern = r'[A-Z]{2}-[0-9]{3}'
 #     # pattern_two = r'[A-Z]{2}-[0-9]{2}'

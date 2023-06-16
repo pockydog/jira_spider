@@ -21,6 +21,10 @@ class Jira:
     skip_ = ['Planning', 'Pending']
 
     @classmethod
+    def get_project(cls):
+        pass
+
+    @classmethod
     def parse_week(cls):
         """
         取得本週的起始日期
@@ -50,6 +54,8 @@ class Jira:
         user_list = list()
         worklog_ = list()
         worklogA = list()
+        worklogs = None
+        worklog_list = None
         start, end = Jira.parse_week()
 
         # 下條件式, 利用JQL
@@ -73,6 +79,7 @@ class Jira:
             user_list += [Jira.get_user_name(worklogs=worklogs)]
             worklog_ = Jira.count_timespant(timespent=worklogA)
             assignee += [issue.fields.creator.name]
+        print(user_list)
 
         return user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, link
 
@@ -81,26 +88,23 @@ class Jira:
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
-        week = Jira.parse_week()
+        week = Jira.parse_week_()
         info_ = list()
         for work in worklogs:
-            # started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-            # str_started = "".join(started)
             parse = work.started[:10]
             if parse in week:
-                info_ += [work.timeSpent]
+                info_ += [f'{work.timeSpent}']
         return info_
 
     @classmethod
     def get_user_name(cls, worklogs):
         name = list()
-        week = Jira.parse_week()
+        a = list()
+        week = Jira.parse_week_()
         for work in worklogs:
-            started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-            # str_started = "".join(started)
             parse = work.started[:10]
             if parse in week:
-                name += [f'\n{work.author.name}']
+                name += [f'{work.author.name}']
         return name
 
     @classmethod
@@ -112,7 +116,6 @@ class Jira:
         week_day = 5
         week = ['20' + datetime.datetime.strftime(today - datetime.timedelta(today.weekday() - i), '%y-%m-%d') for i in
                 range(week_day)]
-        print(week)
         return week
 
     @classmethod
@@ -169,8 +172,23 @@ class Jira:
             a_list.append(str(sum(i)))
         return a_list
 
+    @classmethod
+    def test_pocky(cls):
+        name_list = [['sylvia', 'sylvia', 'sylvia', 'sylvia', 'sylvia'], ['VincentLiu', 'zhaochen', 'zhaochen', 'zhaochen', 'FinleyLu', 'FinleyLu', 'VincentLiu', 'FinleyLu', 'VincentLiu', 'VincentLiu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'VincentLiu', 'VincentLiu', 'VincentLiu', 'zhaochen', 'zhaochen', 'zhaochen'], [], [], [], [], [], [], [], ['KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu'], [], ['IanWu'], ['IanWu'], [], ['WayneChen', 'WayneChen'], [], [], [], [], [], ['IanWu'], [], ['oreoli', 'oreoli'], ['oreoli'], ['oreoli'], ['blackjackhu'], [], [], [], [], [], [], [], [], [], [], ['VickyChen'], ['oreoli'], [], ['JackHuang', 'alanyang'], ['VickyChen'], ['oreoli'], ['oreoli', 'oreoli'], ['oreoli', 'zhaochen', 'VincentLiu', 'KiuTasi', 'alanyang'], [], [], [], ['KamilLyu'], ['Tomaslin'], ['zhaochen', 'Tomaslin'], [], [], ['Tomaslin', 'KamilLyu'], [], ['zhaochen', 'KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], ['Tomaslin', 'KamilLyu'], [], [], [], []]
+        parse_name = [list(set(name)) for name in name_list]
+        return parse_name
+
+    @classmethod
+    def tset_vicky(cls):
+        time_list = [['sylvia'], ['VincentLiu', 'zhaochen', 'FinleyLu'], [], [], [], [], [], [], [], ['KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu'], [], ['IanWu'], ['IanWu'], [], ['WayneChen'], [], [], [], [], [], ['IanWu'], [], ['oreoli'], ['oreoli'], ['oreoli'], ['blackjackhu'], [], [], [], [], [], [], [], [], [], [], ['VickyChen'], ['oreoli'], [], ['JackHuang', 'alanyang'], ['VickyChen'], ['oreoli'], ['oreoli'], ['alanyang', 'zhaochen', 'KiuTasi', 'oreoli', 'VincentLiu'], [], [], [], ['KamilLyu'], ['Tomaslin'], ['Tomaslin', 'zhaochen'], [], [], ['KamilLyu', 'Tomaslin'], [], ['KamilLyu', 'zhaochen'], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu', 'Tomaslin'], [], [], [], []]
+        for time in time_list:
+            print(time)
+
+
+
 
 # 執行檔
 if __name__ == '__main__':
-    Jira.get_person_info()
-
+    # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
+    Jira.test_pocky()
+    # Jira.export_excel()

@@ -69,13 +69,12 @@ class Jira:
                 f'updated >= {start} '
                 f'AND updated <= now()'
                 f'AND (assignee was {user} OR reporter = {user})'
-                , maxResults=0
             )
             # 取得資料 解析
             for issue in issues:
                 worklogs = jira.worklogs(issue)
                 worklog_list += [Jira.get_worklog_info(worklogs=worklogs)]
-                worklog_list = Jira.count_timespant(timespent=worklog_)
+                # worklog_list = Jira.count_timespant(timespent=worklog_)
                 status = issue.fields.status.name
                 if status not in Jira.skip_:
                     status_list.append(status)
@@ -89,11 +88,10 @@ class Jira:
                 str_creatd += ["".join(created)]
                 link += [issue.permalink()]
                 priority += [issue.fields.priority.name]
-        print(len(summary))
         return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
     @classmethod
-    def get_worklog_info(cls, worklogs):
+    def get_worklog_info(cls, worklogs, user=None):
         """
         取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
@@ -105,8 +103,11 @@ class Jira:
             str_started = "".join(started)
             if str_started in week:
                 # 須將登記時數人員名稱 與 員工列表 資料媒合 且回傳
-                info = [f'{work.timeSpent}']
-                worklog_list.extend(info)
+                # parse = str(work.author).lower().replace(' ', '')
+                # parse_a = str(work.author.name).lower().replace(' ', '')
+                # if parse == user.lower() or parse_a == user.lower():
+                    info = [f'{work.timeSpent}']
+                    worklog_list.extend(info)
 
         return worklog_list
 
@@ -158,23 +159,15 @@ class Jira:
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         issues = jira.search_issues(f'updated >= 2023-06-12 '
                                     f'AND updated <= now()'
-                                    'AND project = VUEGMB ')
+                                    'AND project = FT ')
         # AND resolution = Unresolved ORDER BY priority DESC, updated DESC
         for i in issues:
             summary = [i.fields.summary]
             worklogs = jira.worklogs(i)
-            name_list = list()
-            time_list = list()
             for work in worklogs:
-                parse = work.started[:10]
                 started = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", work.started)
-                name_list += [summary]
-                time_list += [work.timeSpent]
-                print(work.started[:10])
-
                 info = [f'000{summary}00花費時間：{work.timeSpent}, /  內容：{work.author.name.lower()} / 時間：{work.started}, '
                         f'{work.started}']
-                print(info)
                 # 負責人：{work.author}, Time:{str_started}
 
     @classmethod
@@ -220,6 +213,6 @@ class Jira:
 # 執行檔
 if __name__ == '__main__':
     # Jira.count_timespant()
-    Jira.test_for_worklog()
+    Jira.export_excel()
     # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
     # print(Jira.get_member_list(jira=jira))
