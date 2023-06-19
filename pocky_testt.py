@@ -21,24 +21,29 @@ class Jira:
     skip_ = ['Planning', 'Pending']
 
     @classmethod
-    def get_project(cls):
-        pass
+    def parse_week(cls, this_week, rule=None):
+        """
+        取得本週 / 上週 的起始日期
+        """
+        if this_week is True:
+            end_day = datetime.datetime.today()
+            weekday = end_day.weekday()
+            days_to_monday = datetime.timedelta(days=weekday)
+            monday = end_day - days_to_monday
+        else:
+            today = datetime.datetime.now() - datetime.timedelta(days=7)
+            monday = today - datetime.timedelta(days=today.weekday())
+            end_day = monday + datetime.timedelta(days=6 - today.weekday())
 
-    @classmethod
-    def parse_week(cls):
-        """
-        取得本週的起始日期
-        """
-        today = datetime.datetime.today()
-        weekday = today.weekday()
-        days_to_monday = datetime.timedelta(days=weekday)
-        monday = today - days_to_monday
+        if rule is True:
+            return monday
+
         start = monday.strftime('%Y-%m-%d')
-        end = today.strftime('%Y-%m-%d')
+        end = end_day.strftime('%Y-%m-%d')
         return start, end
 
     @classmethod
-    def get_person_info(cls):
+    def get_person_info(cls, this_week):
         """
         Main content
         取得相關所需資料
@@ -52,11 +57,8 @@ class Jira:
         project = list()
         status_list = list()
         user_list = list()
-        worklog_ = list()
         worklogA = list()
-        worklogs = None
-        worklog_list = None
-        start, end = Jira.parse_week()
+        start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
         issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
@@ -75,55 +77,60 @@ class Jira:
             link += [issue.permalink()]
             priority += [issue.fields.priority.name]
             worklogs = jira.worklogs(issue)
-            worklogA += [Jira.get_worklog_info(worklogs=worklogs)]
-            user_list += [Jira.get_user_name(worklogs=worklogs)]
-            worklog_ = Jira.count_timespant(timespent=worklogA)
+            worklogA += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
+            user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
+            t_worklog_ = Jira.count_timespant(timespent=worklogA)
             assignee += [issue.fields.creator.name]
-        print(user_list)
+        worklog_ = Jira.test_pocky(name_list=user_list, time_list=worklogA)
 
-        return user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, link
+        return user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link
 
     @classmethod
-    def get_worklog_info(cls, worklogs):
+    def get_worklog_info(cls, worklogs, this_week, time=True):
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
-        week = Jira.parse_week_()
+        week = Jira.parse_week_(this_week=this_week, rule=True)
         info_ = list()
         for work in worklogs:
             parse = work.started[:10]
             if parse in week:
-                info_ += [f'{work.timeSpent}']
+                if time is True:
+                    info_ += [f'{work.timeSpent}']
+                else:
+                    info_ += [f'{work.author.name}']
+
         return info_
 
-    @classmethod
-    def get_user_name(cls, worklogs):
-        name = list()
-        a = list()
-        week = Jira.parse_week_()
-        for work in worklogs:
-            parse = work.started[:10]
-            if parse in week:
-                name += [f'{work.author.name}']
-        return name
+    # @classmethod
+    # def get_user_name(cls, worklogs, this_week):
+    #     name = list()
+    #     week = Jira.parse_week_(this_week=this_week, rule=True)
+    #     for work in worklogs:
+    #         parse = work.started[:10]
+    #         if parse in week:
+    #
+    #             name += [f'{work.author.name}']
+    #     return name
 
     @classmethod
-    def parse_week_(cls):
+    def parse_week_(cls, this_week, rule=True):
         """
         取得 一週 的 所有時間
         """
-        today = datetime.datetime.today()
+        today = cls.parse_week(this_week=this_week, rule=rule)
         week_day = 5
         week = ['20' + datetime.datetime.strftime(today - datetime.timedelta(today.weekday() - i), '%y-%m-%d') for i in
                 range(week_day)]
         return week
 
     @classmethod
-    def export_excel(cls):
+    def export_excel(cls, this_week):
         """
         匯出 且 存入 excel
         """
-        user_list, assignee,  summary, project, priority, str_creatd, status_list, worklog_, link = Jira.get_person_info()
+        user_list, assignee,  summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link = \
+            Jira.get_person_info(this_week=this_week)
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
         sheet.write(0, 0, '')
@@ -135,7 +142,8 @@ class Jira:
         sheet.write(0, 6, 'created')
         sheet.write(0, 7, 'status')
         sheet.write(0, 8, 'worklog')
-        sheet.write(0, 9, 'link')
+        sheet.write(0, 9, 'total_worklog')
+        sheet.write(0, 10, 'link')
 
         for i in range(len(summary)):
             sheet.write(i + 1, 0, i)
@@ -147,9 +155,10 @@ class Jira:
             sheet.write(i + 1, 6, str_creatd[i])
             sheet.write(i + 1, 7, status_list[i])
             sheet.write(i + 1, 8, worklog_[i])
-            sheet.write(i + 1, 9, link[i])
+            sheet.write(i + 1, 9, t_worklog_[i])
+            sheet.write(i + 1, 10, link[i])
         # excel 檔案名稱
-        start, end = Jira.parse_week()
+        start, end = Jira.parse_week(this_week=this_week)
         file.save(f'JIRA_{end}!.xls')
 
     @classmethod
@@ -173,22 +182,50 @@ class Jira:
         return a_list
 
     @classmethod
-    def test_pocky(cls):
-        name_list = [['sylvia', 'sylvia', 'sylvia', 'sylvia', 'sylvia'], ['VincentLiu', 'zhaochen', 'zhaochen', 'zhaochen', 'FinleyLu', 'FinleyLu', 'VincentLiu', 'FinleyLu', 'VincentLiu', 'VincentLiu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'FinleyLu', 'VincentLiu', 'VincentLiu', 'VincentLiu', 'zhaochen', 'zhaochen', 'zhaochen'], [], [], [], [], [], [], [], ['KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu'], [], ['IanWu'], ['IanWu'], [], ['WayneChen', 'WayneChen'], [], [], [], [], [], ['IanWu'], [], ['oreoli', 'oreoli'], ['oreoli'], ['oreoli'], ['blackjackhu'], [], [], [], [], [], [], [], [], [], [], ['VickyChen'], ['oreoli'], [], ['JackHuang', 'alanyang'], ['VickyChen'], ['oreoli'], ['oreoli', 'oreoli'], ['oreoli', 'zhaochen', 'VincentLiu', 'KiuTasi', 'alanyang'], [], [], [], ['KamilLyu'], ['Tomaslin'], ['zhaochen', 'Tomaslin'], [], [], ['Tomaslin', 'KamilLyu'], [], ['zhaochen', 'KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], ['Tomaslin', 'KamilLyu'], [], [], [], []]
-        parse_name = [list(set(name)) for name in name_list]
-        return parse_name
+    def test_pocky(cls, name_list, time_list):
+        c = list()
+        B = list()
+        temp = list()
+        for t in time_list:
+            time_list = list()
+            for i in t:
+                a = eval(cls.compute_cost(sp_time=i))
+                cost = (round(a, 2))
+                time_list.append(cost)
+            temp.append(time_list)
 
-    @classmethod
-    def tset_vicky(cls):
-        time_list = [['sylvia'], ['VincentLiu', 'zhaochen', 'FinleyLu'], [], [], [], [], [], [], [], ['KamilLyu'], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu'], [], ['IanWu'], ['IanWu'], [], ['WayneChen'], [], [], [], [], [], ['IanWu'], [], ['oreoli'], ['oreoli'], ['oreoli'], ['blackjackhu'], [], [], [], [], [], [], [], [], [], [], ['VickyChen'], ['oreoli'], [], ['JackHuang', 'alanyang'], ['VickyChen'], ['oreoli'], ['oreoli'], ['alanyang', 'zhaochen', 'KiuTasi', 'oreoli', 'VincentLiu'], [], [], [], ['KamilLyu'], ['Tomaslin'], ['Tomaslin', 'zhaochen'], [], [], ['KamilLyu', 'Tomaslin'], [], ['KamilLyu', 'zhaochen'], [], [], [], [], [], [], [], [], [], [], [], ['KamilLyu', 'Tomaslin'], [], [], [], []]
-        for time in time_list:
-            print(time)
+        for a, b in zip(name_list, temp):
+            temp = []
+            for x, y in zip(a, b):
+                temp.append(f'{x}:{y}')
+            c.append(temp)
+        names = []
+        for sublist in c:
+            sublist_names = []
+            for item in sublist:
+                name = item.split(":")[0]
+                sublist_names.append(name)
+            names.append(sublist_names)
+        sums = []
+        for sublist in c:
+            name_sum = {}
+            for item in sublist:
+                name, value = item.split(":")
+                if name in name_sum:
+                    name_sum[name] += float(value)
+                else:
+                    name_sum[name] = float(value)
+            sums.append(name_sum)
+        for sublist_names, sublist_sums in zip(names, sums):
+            combined = []
+            for name in sublist_names:
+                value = sublist_sums[name]
+                combined.append(f"{name}:{value}")
+            B.append(combined)
+        a = [(str(set(i)).replace('set()', '')) for i in B]
+        return a
 
 
-
-
-# 執行檔
 if __name__ == '__main__':
-    # jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
-    Jira.test_pocky()
-    # Jira.export_excel()
+    Jira.export_excel(this_week=True)
+
