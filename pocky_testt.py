@@ -177,16 +177,15 @@ class Jira:
 
         for a, b in zip(name_list, temp):
             tempp = list()
-            for x, y in zip(a, b):
-                tempp.append(f'{x}:{y}')
+            tempp += [f'{x}:{y}' for x, y in zip(a, b)]
             c.append(tempp)
+
         names = list()
         for sublist in c:
             sublist_names = list()
-            for item in sublist:
-                name = item.split(":")[0]
-                sublist_names.append(name)
+            sublist_names += [item.split(":")[0] for item in sublist ]
             names.append(sublist_names)
+
         sums = list()
         for sublist in c:
             name_sum = dict()
@@ -197,6 +196,7 @@ class Jira:
                 else:
                     name_sum[name] = float(value)
             sums.append(name_sum)
+
         for sublist_names, sublist_sums in zip(names, sums):
             combined = list()
             for name in sublist_names:
