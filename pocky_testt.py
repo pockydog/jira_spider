@@ -102,17 +102,6 @@ class Jira:
 
         return info_
 
-    # @classmethod
-    # def get_user_name(cls, worklogs, this_week):
-    #     name = list()
-    #     week = Jira.parse_week_(this_week=this_week, rule=True)
-    #     for work in worklogs:
-    #         parse = work.started[:10]
-    #         if parse in week:
-    #
-    #             name += [f'{work.author.name}']
-    #     return name
-
     @classmethod
     def parse_week_(cls, this_week, rule=True):
         """
@@ -167,7 +156,7 @@ class Jira:
         return cost
 
     @classmethod
-    def count_timespant(cls, timespent):
+    def count_timespant(cls, timespent, is_count=None):
         temp = list()
         a_list = list()
         for time in timespent:
@@ -177,9 +166,15 @@ class Jira:
                 cost = (round(cost, 2))
                 time_list.append(cost)
             temp.append(time_list)
-        for i in temp:
-            a_list.append(str(sum(i)))
+
+        if is_count is None:
+            return temp
+
+        if is_count is True:
+            for i in temp:
+                a_list.append(str(sum(i)))
         return a_list
+
 
     @classmethod
     def test_pocky(cls, name_list, time_list):
