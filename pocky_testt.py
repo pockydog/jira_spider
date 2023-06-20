@@ -11,12 +11,6 @@ class Jira:
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
 
-    # 排除 Trevi group 不需要登記的人員列表
-    block_list = [
-        'DebbyChen', 'SashaLin', 'gitlab', 'hanklin',
-        'cedric', 'billji', 'PeggyHuang', 'ahrizhou', 'MarsLi'
-    ]
-
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
 
@@ -79,9 +73,9 @@ class Jira:
             worklogs = jira.worklogs(issue)
             worklogA += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
-            t_worklog_ = Jira.count_timespant(timespent=worklogA)
+            t_worklog_ = Jira.count_timespant(timespent=worklogA, is_count=True)
             assignee += [issue.fields.creator.name]
-        worklog_ = Jira.test_pocky(name_list=user_list, time_list=worklogA)
+        worklog_ = Jira.test_pocky(name_list=user_list, timespent=worklogA)
 
         return user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link
 
@@ -175,35 +169,27 @@ class Jira:
                 a_list.append(str(sum(i)))
         return a_list
 
-
     @classmethod
-    def test_pocky(cls, name_list, time_list):
+    def test_pocky(cls, timespent, name_list):
         c = list()
         B = list()
-        temp = list()
-        for t in time_list:
-            time_list = list()
-            for i in t:
-                a = eval(cls.compute_cost(sp_time=i))
-                cost = (round(a, 2))
-                time_list.append(cost)
-            temp.append(time_list)
+        temp = cls.count_timespant(timespent=timespent)
 
         for a, b in zip(name_list, temp):
-            temp = []
+            tempp = list()
             for x, y in zip(a, b):
-                temp.append(f'{x}:{y}')
-            c.append(temp)
-        names = []
+                tempp.append(f'{x}:{y}')
+            c.append(tempp)
+        names = list()
         for sublist in c:
-            sublist_names = []
+            sublist_names = list()
             for item in sublist:
                 name = item.split(":")[0]
                 sublist_names.append(name)
             names.append(sublist_names)
-        sums = []
+        sums = list()
         for sublist in c:
-            name_sum = {}
+            name_sum = dict()
             for item in sublist:
                 name, value = item.split(":")
                 if name in name_sum:
@@ -212,7 +198,7 @@ class Jira:
                     name_sum[name] = float(value)
             sums.append(name_sum)
         for sublist_names, sublist_sums in zip(names, sums):
-            combined = []
+            combined = list()
             for name in sublist_names:
                 value = sublist_sums[name]
                 combined.append(f"{name}:{value}")
