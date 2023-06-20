@@ -45,7 +45,7 @@ class Jira:
         return start, end
 
     @classmethod
-    def get_person_info(cls):
+    def get_person_info(cls, week=None):
         """
         Main content
         取得相關所需資料
@@ -62,34 +62,34 @@ class Jira:
         worklog_ = list()
         worklog_list = None
         start, end = Jira.parse_week()
-
-        for user in tqdm(members_list):
-            # 下條件式, 利用JQL
-            issues = jira.search_issues(
-                f'updated >= {start} '
-                f'AND updated <= now()'
-                f'AND (assignee was {user} OR reporter = {user})'
-            )
-            # 取得資料 解析
-            for issue in issues:
-                worklogs = jira.worklogs(issue)
-                worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
-                # worklog_list = Jira.count_timespant(timespent=worklog_)
-                status = issue.fields.status.name
-                if status not in Jira.skip_:
-                    status_list.append(status)
-                else:
-                    continue
-                user_list += [user.lower()]
-                summary += [issue.fields.summary]
-                project += [issue.fields.project.name]
-                created = issue.fields.created
-                created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
-                str_creatd += ["".join(created)]
-                link += [issue.permalink()]
-                priority += [issue.fields.priority.name]
-        print(len(summary))
-        return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
+        # if week == 1:
+            for user in tqdm(members_list):
+                # 下條件式, 利用JQL
+                issues = jira.search_issues(
+                    f'updated >= {start} '
+                    f'AND updated <= now()'
+                    f'AND (assignee was {user} OR reporter = {user})'
+                )
+                # 取得資料 解析
+                for issue in issues:
+                    worklogs = jira.worklogs(issue)
+                    worklog_list += [Jira.get_worklog_info(worklogs=worklogs, user=user)]
+                    # worklog_list = Jira.count_timespant(timespent=worklog_)
+                    status = issue.fields.status.name
+                    if status not in Jira.skip_:
+                        status_list.append(status)
+                    else:
+                        continue
+                    user_list += [user.lower()]
+                    summary += [issue.fields.summary]
+                    project += [issue.fields.project.name]
+                    created = issue.fields.created
+                    created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
+                    str_creatd += ["".join(created)]
+                    link += [issue.permalink()]
+                    priority += [issue.fields.priority.name]
+            print(len(summary))
+            return summary, user_list, project, priority, str_creatd, status_list, worklog_list, link
 
     @classmethod
     def get_worklog_info(cls, worklogs, user):
