@@ -21,15 +21,6 @@ class Jira:
     skip_ = ['Planning', 'Pending']
 
 
-    @classmethod
-    def get_member_list(cls, jira):
-        """
-        取得所有 Trevi 員工資訊, 並移除'目標範圍外'的員工 --->'block_list'
-        """
-        members = jira.group_members('TREVI')
-        members_list = [member.lower() for member in members if member not in Jira.block_list]
-
-        return members_list
 
     @classmethod
     def parse_week(cls):

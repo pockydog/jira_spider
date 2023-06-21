@@ -9,7 +9,6 @@ class Test:
     @classmethod
     def last_weekly(cls):
         a = cls.test_vicky(this_week=False)
-        print(a)
         # today = datetime.datetime.now() - datetime.timedelta(days=7)
         # this_week_start = today - datetime.timedelta(days=today.weekday())
         # last_end_day = today + datetime.timedelta(days=6 - today.weekday())
