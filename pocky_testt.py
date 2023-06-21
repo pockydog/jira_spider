@@ -183,7 +183,7 @@ class Jira:
         names = list()
         for sublist in c:
             sublist_names = list()
-            sublist_names += [item.split(":")[0] for item in sublist ]
+            sublist_names += [item.split(":")[0] for item in sublist]
             names.append(sublist_names)
 
         sums = list()

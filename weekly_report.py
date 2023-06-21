@@ -63,7 +63,7 @@ class Jira:
         worklog_list = None
         start, end = Jira.parse_week()
         # if week == 1:
-            for user in tqdm(members_list):
+        for user in tqdm(members_list):
                 # 下條件式, 利用JQL
                 issues = jira.search_issues(
                     f'updated >= {start} '
