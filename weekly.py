@@ -10,6 +10,7 @@ class Jira:
     domain = 'http://jira.trevi.cc/'
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
+    is_this_week = True
 
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
@@ -208,5 +209,5 @@ class Jira:
 
 
 if __name__ == '__main__':
-    Jira.export_excel(this_week=True)
+    Jira.export_excel(this_week=Jira.is_this_week)
 
