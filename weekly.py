@@ -1,3 +1,4 @@
+import pandas as pd
 from jira import JIRA
 import xlwt
 import re
@@ -12,6 +13,7 @@ class Jira:
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
     is_this_week = True
+    Month = False
 
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
@@ -45,15 +47,9 @@ class Jira:
         取得相關所需資料
         """
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
-        summary = list()
-        str_creatd = list()
-        link = list()
-        assignee = list()
-        priority = list()
-        project = list()
-        status_list = list()
-        user_list = list()
-        worklogA = list()
+        summary, str_creatd, link, assignee, \
+            priority, project, status_list, user_list, \
+            worklogA = [list() for info_list in range(9)]
         start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
