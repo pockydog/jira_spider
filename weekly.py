@@ -3,6 +3,7 @@ import xlwt
 import re
 from tqdm import tqdm
 import datetime
+from collections import Counter
 
 
 class Jira:
@@ -113,7 +114,7 @@ class Jira:
         """
         匯出 且 存入 excel
         """
-        user_list, assignee,  summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link = \
+        user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link = \
             Jira.get_person_info(this_week=this_week)
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
@@ -172,42 +173,24 @@ class Jira:
 
     @classmethod
     def test_pocky(cls, timespent, name_list):
-        c = list()
-        B = list()
         temp = cls.count_timespant(timespent=timespent)
-
+        B = list()
         for a, b in zip(name_list, temp):
-            tempp = list()
-            tempp += [f'{x}:{y}' for x, y in zip(a, b)]
-            c.append(tempp)
-
-        names = list()
-        for sublist in c:
-            sublist_names = list()
-            sublist_names += [item.split(":")[0] for item in sublist]
-            names.append(sublist_names)
-
-        sums = list()
-        for sublist in c:
-            name_sum = dict()
-            for item in sublist:
+            name_value_pairs = [f'{x}:{y}' for x, y in zip(a, b)]
+            name_sum = Counter()
+            # Counter 統計可迭代序列中，每個元素出現的次數
+            names = list()
+            for item in name_value_pairs:
                 name, value = item.split(":")
-                if name in name_sum:
-                    name_sum[name] += float(value)
-                else:
-                    name_sum[name] = float(value)
-            sums.append(name_sum)
+                names.append(name)
+                name_sum[name] += float(value)
 
-        for sublist_names, sublist_sums in zip(names, sums):
-            combined = list()
-            for name in sublist_names:
-                value = sublist_sums[name]
-                combined.append(f"{name}:{value}")
+            combined = [f"{name}:{name_sum[name]}" for name in names]
             B.append(combined)
-        a = [(str(set(i)).replace('set()', '')) for i in B]
-        return a
+
+        ans = [str(set(i)).replace('set()', '') for i in B]
+        return ans
 
 
 if __name__ == '__main__':
     Jira.export_excel(this_week=Jira.is_this_week)
-

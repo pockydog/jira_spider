@@ -10,16 +10,8 @@ class Jira:
     domain = 'http://jira.trevi.cc/'
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
-
-    # 排除 Trevi group 不需要登記的人員列表
-    block_list = [
-        'DebbyChen', 'SashaLin', 'gitlab', 'hanklin',
-        'cedric', 'billji', 'PeggyHuang', 'ahrizhou', 'MarsLi'
-    ]
-
-    # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
-
+    # 排除不需要顯示的狀態列表
 
 
     @classmethod
