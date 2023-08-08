@@ -3,6 +3,8 @@ import xlwt
 import re
 from tqdm import tqdm
 import datetime
+from collections import Counter
+import pandas as pd
 
 
 class Jira:
@@ -10,6 +12,9 @@ class Jira:
     domain = 'http://jira.trevi.cc/'
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
+    is_this_week = False
+    file = '/Users/user/Desktop/jira_spider/JIRA_'
+    mapping_file_name = '.xlsx'
 
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
@@ -46,12 +51,12 @@ class Jira:
         summary = list()
         str_creatd = list()
         link = list()
-        assignee = list()
         priority = list()
         project = list()
         status_list = list()
         user_list = list()
-        worklogA = list()
+        timespent = list()
+        t_worklog_ = None
         start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
@@ -64,20 +69,19 @@ class Jira:
             else:
                 continue
             summary += [issue.fields.summary]
+            link += [issue.permalink()]
             project += [issue.fields.project.name]
             created = issue.fields.created
             created = re.findall(r"(\d{4}-\d{1,2}-\d{1,2})", created)
             str_creatd += ["".join(created)]
-            link += [issue.permalink()]
             priority += [issue.fields.priority.name]
             worklogs = jira.worklogs(issue)
-            worklogA += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
+            timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
-            t_worklog_ = Jira.count_timespant(timespent=worklogA, is_count=True)
-            assignee += [issue.fields.creator.name]
-        worklog_ = Jira.test_pocky(name_list=user_list, timespent=worklogA)
+            t_worklog_ = Jira.count_timespant(timespent=timespent, is_count=True)
+        worklog_ = Jira.test_pocky(name_list=user_list, timespent=timespent)
 
-        return user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link
+        return user_list, summary, project, priority, str_creatd, status_list, timespent, t_worklog_, link, worklog_
 
     @classmethod
     def get_worklog_info(cls, worklogs, this_week, time=True):
@@ -90,9 +94,9 @@ class Jira:
             parse = work.started[:10]
             if parse in week:
                 if time is True:
-                    info_ += [f'{work.timeSpent}']
+                    info_.append(f'{work.timeSpent}')
                 else:
-                    info_ += [f'{work.author.name}']
+                    info_.append(f'{work.author.name}')
 
         return info_
 
@@ -102,9 +106,11 @@ class Jira:
         取得 一週 的 所有時間
         """
         today = cls.parse_week(this_week=this_week, rule=rule)
-        week_day = 5
+        week_day = 7
         week = ['20' + datetime.datetime.strftime(today - datetime.timedelta(today.weekday() - i), '%y-%m-%d') for i in
                 range(week_day)]
+        week += ['2023-07-16']
+        # print(week)
         return week
 
     @classmethod
@@ -112,41 +118,45 @@ class Jira:
         """
         匯出 且 存入 excel
         """
-        user_list, assignee,  summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link = \
-            Jira.get_person_info(this_week=this_week)
+        user_list, summary, project, priority, str_creatd, status_list, timespent, t_worklog_, link, worklog_ =Jira.get_person_info(this_week=this_week)
         file = xlwt.Workbook('encoding = utf-8')
-        sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
-        sheet.write(0, 0, '')
-        sheet.write(0, 1, 'assignee')
-        sheet.write(0, 2, 'user_name')
-        sheet.write(0, 3, 'project')
-        sheet.write(0, 4, 'summary')
-        sheet.write(0, 5, 'priority')
-        sheet.write(0, 6, 'created')
-        sheet.write(0, 7, 'status')
-        sheet.write(0, 8, 'worklog')
-        sheet.write(0, 9, 'total_worklog')
-        sheet.write(0, 10, 'link')
+        format_info = set(project)
+        for info in format_info:
+            sheet = file.add_sheet(f'{info}', cell_overwrite_ok=True)
+            sheet.write(0, 0, '')
+            sheet.write(0, 1, 'user_list')
+            sheet.write(0, 2, 'project')
+            sheet.write(0, 3, 'summary')
+            sheet.write(0, 4, 'priority')
+            sheet.write(0, 5, 'created')
+            sheet.write(0, 6, 'status')
+            sheet.write(0, 7, 'worklog')
+            sheet.write(0, 8, 'total_worklog')
+            sheet.write(0, 9, 'link')
+            round = 0
+            for i in range(len(project)):
+                if info != project[i]:
+                    continue
+                else:
+                    round += 1
+                    sheet.write(round + 1, 1, user_list[i])
+                    sheet.write(round + 1, 2, project[i])
+                    sheet.write(round + 1, 3, summary[i])
+                    sheet.write(round + 1, 4, priority[i])
+                    sheet.write(round + 1, 5, str_creatd[i])
+                    sheet.write(round + 1, 6, status_list[i])
+                    sheet.write(round + 1, 7, worklog_[i])
+                    sheet.write(round + 1, 8, t_worklog_[i])
+                    sheet.write(round + 1, 9, link[i])
 
-        for i in range(len(summary)):
-            sheet.write(i + 1, 0, i)
-            sheet.write(i + 1, 1, assignee[i])
-            sheet.write(i + 1, 2, user_list[i])
-            sheet.write(i + 1, 3, project[i])
-            sheet.write(i + 1, 4, summary[i])
-            sheet.write(i + 1, 5, priority[i])
-            sheet.write(i + 1, 6, str_creatd[i])
-            sheet.write(i + 1, 7, status_list[i])
-            sheet.write(i + 1, 8, worklog_[i])
-            sheet.write(i + 1, 9, t_worklog_[i])
-            sheet.write(i + 1, 10, link[i])
         # excel 檔案名稱
         start, end = Jira.parse_week(this_week=this_week)
-        file.save(f'JIRA_{end}!.xls')
+        file.save(f'JIRA_{end}{Jira.is_this_week}.xlsx')
 
     @classmethod
     def compute_cost(cls, sp_time):
-        cost = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+').replace('w', '*40')
+        cost = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+').\
+            replace('w', '*40').replace('s', '/3600')
         return cost
 
     @classmethod
@@ -156,11 +166,11 @@ class Jira:
         for time in timespent:
             time_list = list()
             for t in time:
+                cost = t.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+').replace('w', '*40')
                 cost = eval(cls.compute_cost(sp_time=t))
                 cost = (round(cost, 2))
                 time_list.append(cost)
             temp.append(time_list)
-
         if is_count is None:
             return temp
 
@@ -171,42 +181,25 @@ class Jira:
 
     @classmethod
     def test_pocky(cls, timespent, name_list):
-        c = list()
-        B = list()
         temp = cls.count_timespant(timespent=timespent)
-
+        B = list()
         for a, b in zip(name_list, temp):
-            tempp = list()
-            tempp += [f'{x}:{y}' for x, y in zip(a, b)]
-            c.append(tempp)
-
-        names = list()
-        for sublist in c:
-            sublist_names = list()
-            sublist_names += [item.split(":")[0] for item in sublist]
-            names.append(sublist_names)
-
-        sums = list()
-        for sublist in c:
-            name_sum = dict()
-            for item in sublist:
+            name_value_pairs = [f'{x}:{y}' for x, y in zip(a, b)]
+            name_sum = Counter()
+            # Counter 統計可迭代序列中，每個元素出現的次數
+            names = list()
+            for item in name_value_pairs:
                 name, value = item.split(":")
-                if name in name_sum:
-                    name_sum[name] += float(value)
-                else:
-                    name_sum[name] = float(value)
-            sums.append(name_sum)
+                names.append(name)
+                name_sum[name] += float(value)
 
-        for sublist_names, sublist_sums in zip(names, sums):
-            combined = list()
-            for name in sublist_names:
-                value = sublist_sums[name]
-                combined.append(f"{name}:{value}")
+            combined = [f"{name}:{name_sum[name]}" for name in names]
             B.append(combined)
-        a = [(str(set(i)).replace('set()', '')) for i in B]
-        return a
+        ans = [str(set(i)).replace('set()', '') for i in B]
+        return ans
+
 
 
 if __name__ == '__main__':
-    Jira.export_excel(this_week=True)
-
+    # Jira.get_person_info(this_week=Jira.is_this_week)
+    Jira.export_excel(this_week=Jira.is_this_week)

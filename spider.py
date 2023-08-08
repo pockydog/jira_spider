@@ -16,14 +16,9 @@ class Jira:
     file = '/Users/user/Desktop/jira_spider/JIRA_'
     mapping_file_name = '.xlsx'
 
+
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
-
-    @classmethod
-    def get_member(cls, jira):
-        a = jira.group_members('Trevi')
-        member_list = [i for i in a]
-        return member_list
 
     @classmethod
     def parse_week(cls, this_week, rule=None):
@@ -51,7 +46,7 @@ class Jira:
         return start, end
 
     @classmethod
-    def get_person_info(cls, this_week):
+    def get_person_info(cls, this_week, test=None):
         """
         Main content
         取得相關所需資料
@@ -59,6 +54,7 @@ class Jira:
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
         summary = list()
         str_creatd = list()
+        time = list()
         link = list()
         priority = list()
         project = list()
@@ -69,12 +65,10 @@ class Jira:
         estimated_time = list()
         test_time = list()
         timespents = list()
-        a = list()
         t_worklog_ = None
         start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
-        print(start)
         issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
         # 取得資料 解析
         for issue in tqdm(issues):
@@ -84,8 +78,8 @@ class Jira:
             else:
                 continue
             worklogs = jira.worklogs(issue)
-            a += [Jira.test_by_vicky(worklogs=worklogs, this_week=this_week, jira=jira)]
             timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
+            time += [Jira.get_worklog_info(time=False, worklogs=worklogs, this_week=this_week, timespent=True)]
             timespents += [Jira.get_worklog_info(time=False, worklogs=worklogs, this_week=this_week)]
             t_worklog_ = Jira.count_timespant(timespent=timespent, is_count=True)
             summary += [issue.fields.summary]
@@ -97,7 +91,7 @@ class Jira:
             test_time += [Jira.parse_estimated_time(time_type=timeorigina)]
 
             # test = issue.fields.timeoriginalestimate
-            # print(issue.fields.timeoriginalestimate)
+            # print(test)
 
             link += [issue.permalink()]
             due_date += [str(issue.fields.duedate)[0:19].replace('None', '-')]
@@ -108,12 +102,15 @@ class Jira:
             priority += [issue.fields.priority.name]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
         worklog_ = Jira.test_pocky(name_list=user_list, timespent=timespent)
+        if test is True:
+            return time, timespents
+
         return summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time
 
     @classmethod
     def parse_estimated_time(cls, time_type):
         if type(time_type) is int:
-            estimated_time = float(time_type / 60 / 60)
+            estimated_time = float(time_type/60/60)
             estimated_time = (round(estimated_time, 2))
 
         else:
@@ -122,7 +119,7 @@ class Jira:
         return estimated_time
 
     @classmethod
-    def get_worklog_info(cls, worklogs, this_week, time=True, name=None):
+    def get_worklog_info(cls, worklogs, this_week, time=True, name=None, timespent=None):
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
@@ -132,36 +129,18 @@ class Jira:
         for work in worklogs:
             parse = work.started[:10]
             if parse in week:
-                # test_list += {f'{work.author.name}:{work.timeSpent}'}
                 if time is True:
+                    print(work.timeSpent)
+                    print(work.author.name)
                     info_ += [f'{work.timeSpent}']
                 else:
                     info_ += [f'{work.author.name}']
                 if name is True:
                     info_.append(f'{work.author.name}')
+                if timespent is True:
+                    info_ += [f'{work.timeSpent}']
+
         return info_
-
-    @classmethod
-    def test_by_vicky(cls, worklogs, this_week, jira):
-        import decimal
-
-        """
-            取得 worklog 資料, 記載員工針對該工單所花費的時間
-        """
-        week = Jira.parse_week_(this_week=this_week, rule=True)
-        name = list()
-        time = list()
-
-        for work in worklogs:
-            parse = work.started[:10]
-            if parse in week:
-                name += [work.author.name]
-                my_count = Jira.compute_cost(sp_time=work.timeSpent)
-                my_count = eval(my_count)
-                count = "{:.2f}".format(my_count)
-                time += [count]
-                dict_ = dict(zip(name, time))
-                return dict_
 
     @classmethod
     def parse_week_(cls, this_week, rule=True):
@@ -182,50 +161,8 @@ class Jira:
         """
         匯出 且 存入 excel
         """
-        summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time, user_list = \
+        summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time =\
             Jira.get_person_info(this_week=this_week)
-        file = xlwt.Workbook('encoding = utf-8')
-        for name in user_list:
-            sheet = file.add_sheet(f'{name}', cell_overwrite_ok=True)
-            if name == sheet:
-                sheet.write(0, 0, '')
-                sheet.write(0, 1, 'project')
-                sheet.write(0, 2, 'summary')
-                sheet.write(0, 3, 'priority')
-                sheet.write(0, 4, 'created')
-                sheet.write(0, 5, 'due_date')
-                sheet.write(0, 6, 'worklog')
-                sheet.write(0, 7, 'total_worklog')
-                sheet.write(0, 8, 'status')
-                sheet.write(0, 9, 'estimated_time')
-                sheet.write(0, 10, '預估時間')
-                sheet.write(0, 11, 'link')
-
-                for i in range(len(summary)):
-                    sheet.write(i + 1, 0, i)
-                    sheet.write(i + 1, 1, project[i])
-                    sheet.write(i + 1, 2, summary[i])
-                    sheet.write(i + 1, 3, priority[i])
-                    sheet.write(i + 1, 4, str_creatd[i])
-                    sheet.write(i + 1, 5, due_date[i])
-                    sheet.write(i + 1, 6, worklog_[i])
-                    sheet.write(i + 1, 7, t_worklog_[i])
-                    sheet.write(i + 1, 8, status_list[i])
-                    sheet.write(i + 1, 9, estimated_time[i])
-                    sheet.write(i + 1, 10, test_time[i])
-                    sheet.write(i + 1, 11, link[i])
-                # excel 檔案名稱
-                start, end = Jira.parse_week(this_week=this_week)
-                file.save(f'JIRA_{end}{Jira.is_this_week}.xlsx')
-                Jira.to_excel(this_week=this_week)
-
-    @classmethod
-    def export_excel_test(cls, this_week):
-        """
-        匯出 且 存入 excel
-        """
-        summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, \
-            test_time = Jira.get_person_info(this_week=this_week)
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
         sheet.write(0, 0, '')
@@ -233,13 +170,13 @@ class Jira:
         sheet.write(0, 2, 'summary')
         sheet.write(0, 3, 'priority')
         sheet.write(0, 4, 'created')
-        # sheet.write(0, 5, 'due_date')
-        sheet.write(0, 5, 'worklog')
-        sheet.write(0, 6, 'total_worklog')
-        sheet.write(0, 7, 'status')
-        sheet.write(0, 8, 'estimated_time')
-        # sheet.write(0, 10, '預估時間')
-        sheet.write(0, 9, 'link')
+        sheet.write(0, 5, 'due_date')
+        sheet.write(0, 6, 'worklog')
+        sheet.write(0, 7, 'total_worklog')
+        sheet.write(0, 8, 'status')
+        sheet.write(0, 9, 'estimated_time')
+        sheet.write(0, 10, '預估時間')
+        sheet.write(0, 11, 'link')
 
         for i in range(len(summary)):
             sheet.write(i + 1, 0, i)
@@ -247,13 +184,13 @@ class Jira:
             sheet.write(i + 1, 2, summary[i])
             sheet.write(i + 1, 3, priority[i])
             sheet.write(i + 1, 4, str_creatd[i])
-            # sheet.write(i + 1, 5, due_date[i])
-            sheet.write(i + 1, 5, worklog_[i])
-            sheet.write(i + 1, 6, t_worklog_[i])
-            sheet.write(i + 1, 7, status_list[i])
-            sheet.write(i + 1, 8, estimated_time[i])
-            # sheet.write(i + 1, 10, test_time[i])
-            sheet.write(i + 1, 9, link[i])
+            sheet.write(i + 1, 5, due_date[i])
+            sheet.write(i + 1, 6, worklog_[i])
+            sheet.write(i + 1, 7, t_worklog_[i])
+            sheet.write(i + 1, 8, status_list[i])
+            sheet.write(i + 1, 9, estimated_time[i])
+            sheet.write(i + 1, 10, test_time[i])
+            sheet.write(i + 1, 11, link[i])
         # excel 檔案名稱
         start, end = Jira.parse_week(this_week=this_week)
         file.save(f'JIRA_{end}{Jira.is_this_week}.xlsx')
@@ -261,7 +198,7 @@ class Jira:
 
     @classmethod
     def compute_cost(cls, sp_time):
-        cost = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+'). \
+        cost = sp_time.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+').\
             replace('w', '*40').replace('s', '/3600')
         return cost
 
@@ -298,7 +235,7 @@ class Jira:
                 names.append(name)
                 name_sum[name] += float(value)
 
-            combined = [f"{name}:{name_sum[name]}" for name in names]
+            combined = [f'{name}:{name_sum[name]}' for name in names]
             B.append(combined)
         ans = [str(set(i)).replace('set()', '') for i in B]
         return ans
@@ -313,7 +250,9 @@ class Jira:
 
 
 if __name__ == '__main__':
-    Jira.export_excel_test(this_week=Jira.is_this_week)
+    # print(Jira.done_project())
+    Jira.export_excel(this_week=Jira.is_this_week)
+
 
 # 改黨名
 # 改日期間距
