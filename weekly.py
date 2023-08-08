@@ -1,3 +1,4 @@
+import pandas as pd
 from jira import JIRA
 import xlwt
 import re
@@ -12,6 +13,10 @@ class Jira:
     account = 'VickyChen'
     password = '1Q2W3E4R!!!'
     is_this_week = True
+<<<<<<< HEAD:weekly.py
+=======
+    Month = False
+>>>>>>> f9fd9b5b83c35bcf8b732e04f974fb3037aa5ec3:pocky_testt.py
 
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
@@ -45,6 +50,7 @@ class Jira:
         取得相關所需資料
         """
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
+<<<<<<< HEAD:weekly.py
         summary = list()
         str_creatd = list()
         link = list()
@@ -55,6 +61,11 @@ class Jira:
         user_list = list()
         timespent = list()
         t_worklog_ = None
+=======
+        summary, str_creatd, link, assignee, \
+            priority, project, status_list, user_list, \
+            worklogA = [list() for info_list in range(9)]
+>>>>>>> f9fd9b5b83c35bcf8b732e04f974fb3037aa5ec3:pocky_testt.py
         start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
@@ -115,7 +126,12 @@ class Jira:
         """
         匯出 且 存入 excel
         """
+<<<<<<< HEAD:weekly.py
         summary, project, priority, str_creatd, status_list, timespent, t_worklog_, link, worklog_ =Jira.get_person_info(this_week=this_week)
+=======
+        user_list, assignee, summary, project, priority, str_creatd, status_list, worklog_, t_worklog_, link = \
+            Jira.get_person_info(this_week=this_week)
+>>>>>>> f9fd9b5b83c35bcf8b732e04f974fb3037aa5ec3:pocky_testt.py
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
         sheet.write(0, 0, '')
