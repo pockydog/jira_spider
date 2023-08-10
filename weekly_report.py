@@ -74,7 +74,6 @@ class Jira:
         start, end = Jira.parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
-        print(start)
         issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
         # 取得資料 解析
         for issue in tqdm(issues):
@@ -143,15 +142,12 @@ class Jira:
 
     @classmethod
     def test_by_vicky(cls, worklogs, this_week, jira):
-        import decimal
-
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
         week = Jira.parse_week_(this_week=this_week, rule=True)
         name = list()
         time = list()
-
         for work in worklogs:
             parse = work.started[:10]
             if parse in week:
@@ -315,5 +311,6 @@ class Jira:
 if __name__ == '__main__':
     Jira.export_excel_test(this_week=Jira.is_this_week)
 
-# 改黨名
-# 改日期間距
+
+# 優化現在工時一個多人的狀況
+# 匯出檔案 依人名分sheet 參考 (sort_info.py )

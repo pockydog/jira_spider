@@ -32,8 +32,10 @@ class CheckinfoHandler:
                 'result': f'=SUMIF(A:A,"{name}",B:B)'
             }
             test.append(results)
+
         df = pd.DataFrame(test)
         df.to_excel(f'test.xlsx', 'counter1', index=False)
+#  新增項目總時長, + 部門花費總時長
 
 
 if __name__ == '__main__':
