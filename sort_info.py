@@ -166,7 +166,6 @@ class Jira:
         for time in timespent:
             time_list = list()
             for t in time:
-                cost = t.replace('d', '*8').replace('h', '*1').replace('m', '/60').replace(' ', '+').replace('w', '*40')
                 cost = eval(cls.compute_cost(sp_time=t))
                 cost = (round(cost, 2))
                 time_list.append(cost)

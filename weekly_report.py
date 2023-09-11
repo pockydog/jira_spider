@@ -2,15 +2,15 @@ from jira import JIRA
 import xlwt
 import re
 from tqdm import tqdm
-import datetime
 from collections import Counter
 import pandas as pd
+from Tool.week_tool import TimeTool
 
 
 class Jira:
     # 基本設定
     domain = 'http://jira.trevi.cc/'
-    account = 'VickyChen'
+    account = 'Vicky.C'
     password = '1Q2W3E4R!!!'
     is_this_week = False
     file = '/Users/user/Desktop/jira_spider/JIRA_'
@@ -18,37 +18,6 @@ class Jira:
 
     # 排除不需要顯示的狀態列表
     skip_ = ['Planning', 'Pending']
-
-    @classmethod
-    def get_member(cls, jira):
-        a = jira.group_members('Trevi')
-        member_list = [i for i in a]
-        return member_list
-
-    @classmethod
-    def parse_week(cls, this_week, rule=None):
-        """
-        取得本週 / 上週 的起始日期
-        """
-        if this_week is True:
-            end_day = datetime.datetime.today()
-            weekday = end_day.weekday()
-            days_to_monday = datetime.timedelta(days=weekday)
-            monday = end_day - days_to_monday
-
-        else:
-            today = datetime.datetime.now() - datetime.timedelta(days=7)
-            monday = today - datetime.timedelta(days=today.weekday())
-            end_day = monday + datetime.timedelta(days=6 - today.weekday())
-
-        if rule is True:
-            return monday
-
-        yesterday = monday - datetime.timedelta(days=1)
-        start = yesterday.strftime('%Y-%m-%d')
-        end = end_day.strftime('%Y-%m-%d')
-
-        return start, end
 
     @classmethod
     def get_person_info(cls, this_week):
@@ -71,7 +40,7 @@ class Jira:
         timespents = list()
         a = list()
         t_worklog_ = None
-        start, end = Jira.parse_week(this_week=this_week)
+        start, end = TimeTool.new_parse_week(this_week=this_week)
 
         # 下條件式, 利用JQL
         issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
@@ -83,11 +52,13 @@ class Jira:
             else:
                 continue
             worklogs = jira.worklogs(issue)
+            link += [issue.permalink()]
             a += [Jira.test_by_vicky(worklogs=worklogs, this_week=this_week, jira=jira)]
             timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
             timespents += [Jira.get_worklog_info(time=False, worklogs=worklogs, this_week=this_week)]
             t_worklog_ = Jira.count_timespant(timespent=timespent, is_count=True)
             summary += [issue.fields.summary]
+
             estimated = issue.fields.timeestimate
             timeorigina = issue.fields.timeoriginalestimate
             # 剩下時間
@@ -98,7 +69,6 @@ class Jira:
             # test = issue.fields.timeoriginalestimate
             # print(issue.fields.timeoriginalestimate)
 
-            link += [issue.permalink()]
             due_date += [str(issue.fields.duedate)[0:19].replace('None', '-')]
             project += [issue.fields.project.name]
             created = issue.fields.created
@@ -106,8 +76,30 @@ class Jira:
             str_creatd += ["".join(created)]
             priority += [issue.fields.priority.name]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
+            user = Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)
+            # q = Jira.test_pockys(user=user, issue=issue, timespent=timespent)
+
         worklog_ = Jira.test_pocky(name_list=user_list, timespent=timespent)
-        return summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time
+        # worklog_name, worklog_time += [Jira.vicky_parse_info(worklog_=worklog_, workId=workId)]
+        # test = Jira.get_for_test(worklog_code=worklog_code, summary=summary)
+
+        return worklogs, summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time
+
+    @classmethod
+    def test_pockys(cls, user, issue, timespent):
+        summary = list()
+        user_list = list()
+        time_list = list()
+        project = list()
+
+        for test in user:
+            user_list.append(test.split(','))
+        for time in timespent:
+            b = time.split(',')
+            user_list.append(time.split(','))
+            for i in range(len(b)):
+                summary.append(issue.fields.summary)
+                project += [issue.fields.project.name]
 
     @classmethod
     def parse_estimated_time(cls, time_type):
@@ -121,11 +113,12 @@ class Jira:
         return estimated_time
 
     @classmethod
-    def get_worklog_info(cls, worklogs, this_week, time=True, name=None):
+    def get_worklog_info(cls, worklogs, this_week, time=True, workId=None):
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
-        week = Jira.parse_week_(this_week=this_week, rule=True)
+        week = TimeTool.parse_week_(this_week=this_week, rule=True)
+        print(week)
         info_ = list()
 
         for work in worklogs:
@@ -136,8 +129,8 @@ class Jira:
                     info_ += [f'{work.timeSpent}']
                 else:
                     info_ += [f'{work.author.name}']
-                if name is True:
-                    info_.append(f'{work.author.name}')
+                if workId is True:
+                    info_ += [work.issueId]
         return info_
 
     @classmethod
@@ -145,7 +138,7 @@ class Jira:
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
-        week = Jira.parse_week_(this_week=this_week, rule=True)
+        week = TimeTool.parse_week_(this_week=this_week, rule=True)
         name = list()
         time = list()
         for work in worklogs:
@@ -160,67 +153,11 @@ class Jira:
                 return dict_
 
     @classmethod
-    def parse_week_(cls, this_week, rule=True):
-        """
-        取得 一週 的 所有時間
-        """
-        today = cls.parse_week(this_week=this_week, rule=rule)
-        yesterday = today - datetime.timedelta(days=1)
-        week_day = 8
-        week = ['20' + datetime.datetime.strftime(today - datetime.timedelta(today.weekday() - i), '%y-%m-%d') for i in
-                range(week_day)]
-        yesterday = yesterday.strftime('%Y-%m-%d')
-        week.append(yesterday)
-        return week
-
-    @classmethod
-    def export_excel(cls, this_week):
-        """
-        匯出 且 存入 excel
-        """
-        summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, test_time, user_list = \
-            Jira.get_person_info(this_week=this_week)
-        file = xlwt.Workbook('encoding = utf-8')
-        for name in user_list:
-            sheet = file.add_sheet(f'{name}', cell_overwrite_ok=True)
-            if name == sheet:
-                sheet.write(0, 0, '')
-                sheet.write(0, 1, 'project')
-                sheet.write(0, 2, 'summary')
-                sheet.write(0, 3, 'priority')
-                sheet.write(0, 4, 'created')
-                sheet.write(0, 5, 'due_date')
-                sheet.write(0, 6, 'worklog')
-                sheet.write(0, 7, 'total_worklog')
-                sheet.write(0, 8, 'status')
-                sheet.write(0, 9, 'estimated_time')
-                sheet.write(0, 10, '預估時間')
-                sheet.write(0, 11, 'link')
-
-                for i in range(len(summary)):
-                    sheet.write(i + 1, 0, i)
-                    sheet.write(i + 1, 1, project[i])
-                    sheet.write(i + 1, 2, summary[i])
-                    sheet.write(i + 1, 3, priority[i])
-                    sheet.write(i + 1, 4, str_creatd[i])
-                    sheet.write(i + 1, 5, due_date[i])
-                    sheet.write(i + 1, 6, worklog_[i])
-                    sheet.write(i + 1, 7, t_worklog_[i])
-                    sheet.write(i + 1, 8, status_list[i])
-                    sheet.write(i + 1, 9, estimated_time[i])
-                    sheet.write(i + 1, 10, test_time[i])
-                    sheet.write(i + 1, 11, link[i])
-                # excel 檔案名稱
-                start, end = Jira.parse_week(this_week=this_week)
-                file.save(f'JIRA_{end}{Jira.is_this_week}.xlsx')
-                Jira.to_excel(this_week=this_week)
-
-    @classmethod
     def export_excel_test(cls, this_week):
         """
         匯出 且 存入 excel
         """
-        summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, \
+        _, summary, project, priority, str_creatd, status_list, t_worklog_, link, worklog_, due_date, estimated_time, \
             test_time = Jira.get_person_info(this_week=this_week)
         file = xlwt.Workbook('encoding = utf-8')
         sheet = file.add_sheet(f'jira_', cell_overwrite_ok=True)
@@ -251,7 +188,8 @@ class Jira:
             # sheet.write(i + 1, 10, test_time[i])
             sheet.write(i + 1, 9, link[i])
         # excel 檔案名稱
-        start, end = Jira.parse_week(this_week=this_week)
+        start, end = TimeTool.new_parse_week(this_week=this_week)
+        print(start, end)
         file.save(f'JIRA_{end}{Jira.is_this_week}.xlsx')
         Jira.to_excel(this_week=this_week)
 
@@ -301,7 +239,7 @@ class Jira:
 
     @classmethod
     def to_excel(cls, this_week):
-        start, end = Jira.parse_week(this_week=this_week)
+        start, end = TimeTool.new_parse_week(this_week=this_week)
         file_name = f'{Jira.file}{end}{Jira.is_this_week}{Jira.mapping_file_name}'
         df = pd.read_excel(f'{file_name}')
         df.dropna(axis=0, how='any', inplace=True)
