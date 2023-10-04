@@ -1,6 +1,6 @@
-pdm.py
-sort_info.py
-test.py
-weekly_counter.py
-weekly_report.py
+core/pdm.py
+core/sort_info.py
+core/test.py
+core/weekly_counter.py
+core/weekly_report.py
 *.xlxs

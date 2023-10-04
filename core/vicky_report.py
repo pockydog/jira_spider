@@ -5,14 +5,10 @@ import pandas as pd
 from Tool.week_tool import TimeTool
 from Tool.count_tool import CountTool
 from Tool.group_tool import GroupTool
-from report import Jira_
 import const
 
 
 class Jira:
-    # 基本設定
-    # group = [{'QA': 0}, {'PM': 0}, {'Server': 0}, {'FE-RD': 0}, {'BE-RD': 0}, {'Design': 0}]
-    is_this_week = False
 
     @classmethod
     def get_person_info(cls, this_week):
@@ -33,9 +29,7 @@ class Jira:
             timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
         worklog_ = CountTool.sum_info(name_list=user_list, timespent=timespent)
-        result = Jira.get_spendtime(jira=jira, worklog_=worklog_)
-
-        return result
+        Jira.get_spendtime(jira=jira, worklog_=worklog_)
 
     @classmethod
     def get_worklog_info(cls, worklogs, this_week, time=True):

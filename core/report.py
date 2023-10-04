@@ -103,7 +103,6 @@ class Jira_:
                             totally_time[group_name] += group_time
                         else:
                             totally_time[group_name] = 0
-        print(totally_time)
 
     @classmethod
     def get_time(cls, info_list):
