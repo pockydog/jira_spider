@@ -3,3 +3,4 @@ sort_info.py
 test.py
 weekly_counter.py
 weekly_report.py
+*.xlxs
