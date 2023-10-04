@@ -28,7 +28,7 @@ class CountTool:
         return a_list
 
     @classmethod
-    def test_pocky(cls, timespent, name_list):
+    def sum_info(cls, timespent, name_list):
         temp = cls.count_timespant(timespent=timespent)
         B = list()
         for a, b in zip(name_list, temp):

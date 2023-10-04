@@ -21,8 +21,6 @@ class Jira:
     file = f'/Users/user/Desktop/jira_spider/'
     mapping_file_name = '.xlsx'
     type_ = '子任务'
-    # mapping_start = {3: '2023.07.31', 4: '2023.08.7', 5: '2023.08.14', 6: '2023.08.21'}
-    # mapping_end = {3: '2023.08.04', 4: '2023.08.11', 5: '2023.08.18', 6: '2023.08.25'}
 
 
     @classmethod
