@@ -1,11 +1,13 @@
 from jira import JIRA
-import re
+
 from tqdm import tqdm
 import pandas as pd
+import re
+
+import const
 from Tool.week_tool import TimeTool
 from Tool.count_tool import CountTool
 from Tool.group_tool import GroupTool
-import const
 
 
 class Jira:
@@ -26,6 +28,7 @@ class Jira:
         # 取得資料 解析
         for issue in tqdm(issues):
             worklogs = jira.worklogs(issue)
+            project = issue.fields.project.name
             timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
             user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
         worklog_ = CountTool.sum_info(name_list=user_list, timespent=timespent)
@@ -59,4 +62,3 @@ class Jira:
                     g['time'] += float(time)
         df = pd.DataFrame(groups)
         df.to_excel(f'vicky.xlsx', 'counter1', index=False)
-
