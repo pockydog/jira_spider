@@ -26,13 +26,15 @@ class JiraByOrder:
     @classmethod
     def get_person_info(cls, this_week):
         jira = JIRA(server=const.domain, basic_auth=(const.account, const.password))
-        info_, user_list, timespent, project, link, summary = [list() for _ in range(6)]
+        # info_, user_list, timespent, project, link, summary = [list() for _ in range(6)]
+        timespent = list()
+
         start, end = TimeTool.new_parse_week(this_week=this_week)
         groups = GroupTool.get_group(jira=jira, group_list=True)
         # 下條件式, 利用JQL
         issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
         # 取得資料 解析
-        for issue in tqdm(issues):
+        for issue in tqdm(issues[:10]):
             worklogs = jira.worklogs(issue)
             project = issue.fields.project.name
             timespent += [JiraByOrder.get_worklog_info(
@@ -41,7 +43,7 @@ class JiraByOrder:
                 project=project,
                 groups=groups
             )]
-        vicky = JiraByOrder.get(timespent=timespent)
+        JiraByOrder.get(timespent=timespent)
 
         # worklog_ = CountTool.sum_info(name_list=user_list, timespent=timespent)
         # JiraByOrder.get_spendtime(jira=jira, worklog_=worklog_)
@@ -64,27 +66,24 @@ class JiraByOrder:
             df = pd.DataFrame(result)
             df.to_excel(f'vp.xlsx', 'counter1', index=False)
 
-        return result
+        # return result
 
     @classmethod
     def get_worklog_info(cls, worklogs, this_week, project, groups):
         """
             取得 worklog 資料, 記載員工針對該工單所花費的時間
         """
+        time, user_list, timespent, project, link, summary = [list() for _ in range(6)]
+
         week = TimeTool.parse_week_(this_week=this_week, rule=True)
-        # groups = GroupTool.get_group(jira=jira, group_list=True)
-        # for i in str(worklog_).split(','):
-        #     name = str(re.sub(r'[^a-zA-Z,]', '', i))
-        #     time = str(re.sub(r'[^0-9/.]', '', i)).lstrip('.')
-        #     for g in groups:
 
         for work in worklogs:
             parse = work.started[:10]
             if parse in week:
-                name = str(re.sub(r'[^a-zA-Z,]', '', work.author.name))
+                user_list = str(re.sub(r'[^a-zA-Z,]', '', work.author.name))
                 time = f'{round(eval(CountTool.compute_cost(sp_time=work.timeSpent)), 2)}'
                 for g in groups:
-                    if g['name'] == name:
+                    if g['name'] == user_list:
                         role = g['group']
                         info = {
                             'project': project,
@@ -92,18 +91,6 @@ class JiraByOrder:
                             'group': role
                         }
                         return info
-
-    @classmethod
-    def get_spendtime(cls, jira, worklog_):
-        groups = GroupTool.get_group(jira=jira, group_list=True)
-        for i in str(worklog_).split(','):
-            name = str(re.sub(r'[^a-zA-Z,]', '', i))
-            time = str(re.sub(r'[^0-9/.]', '', i)).lstrip('.')
-            for g in groups:
-                if g['name'] == name:
-                    g['time'] += float(time)
-        df = pd.DataFrame(groups)
-        df.to_excel(f'vicky.xlsx', 'counter1', index=False)
 
 
 if __name__ == '__main__':

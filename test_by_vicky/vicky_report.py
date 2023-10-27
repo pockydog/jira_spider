@@ -10,7 +10,7 @@ from Tool.count_tool import CountTool
 from Tool.group_tool import GroupTool
 
 
-class Jira:
+class JiraByPeople:
 
     @classmethod
     def get_person_info(cls, this_week):
@@ -28,11 +28,11 @@ class Jira:
         # 取得資料 解析
         for issue in tqdm(issues):
             worklogs = jira.worklogs(issue)
-            project = issue.fields.project.name
-            timespent += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week)]
-            user_list += [Jira.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
+            # project = issue.fields.project.name
+            timespent += [JiraByPeople.get_worklog_info(worklogs=worklogs, this_week=this_week)]
+            user_list += [JiraByPeople.get_worklog_info(worklogs=worklogs, this_week=this_week, time=False)]
         worklog_ = CountTool.sum_info(name_list=user_list, timespent=timespent)
-        Jira.get_spendtime(jira=jira, worklog_=worklog_)
+        JiraByPeople.get_spendtime(jira=jira, worklog_=worklog_)
 
     @classmethod
     def get_worklog_info(cls, worklogs, this_week, time=True):
