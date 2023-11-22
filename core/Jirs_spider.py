@@ -91,12 +91,21 @@ class JiraTest:
         for work in worklogs:
             parse = work.started[:10]
             if parse in week:
-                project_list.append(issue.fields.project.name)
                 issue_list.append(issue.fields.summary)
                 time_list.append(round(eval(CountTool.compute_cost(sp_time=work.timeSpent))))
                 name_list.append(str(re.sub(r'[^a-zA-Z,]', '', work.author.name)))
                 a = [g['group'] for g in groups if g['name'] == str(re.sub(r'[^a-zA-Z,]', '', work.author.name))]
                 group_list.append(re.sub(r'[^a-zA-Z,]', '', str(a)))
+                if issue.fields.project.name == 'Design Team':
+                    prog = re.compile('【.*?】')
+                    re_content = prog.match(issue.fields.summary)
+                    if re_content:
+                        project_list.append(re_content.group())
+                    else:
+                        project_list.append('Design Team')
+                else:
+                    project_list.append(issue.fields.project.name)
+
         for project in range(len(project_list)):
             result = {
                 'project': project_list[project],
