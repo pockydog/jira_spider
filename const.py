@@ -13,6 +13,15 @@ lead_list = {
     '【QA】': 'Scott.H'
 }
 
+"""IssueOrder"""
+lead_list_ = {
+    'Design': 'Sventa.H',
+    'Frontend': 'Oreo.L',
+    'Backend': 'Yao.T',
+    'Server': 'Frank.L',
+    'QA': 'Scott.H'
+}
+
 
 
 
