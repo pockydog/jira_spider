@@ -1,96 +1,57 @@
 from jira import JIRA
 import pygsheets
+import threading
 import re
-import const
+import Const
 
 
 class ExcelParser:
-    setting_file = 'google_info.json'
-    survey_url = 'https://docs.google.com/spreadsheets/d/1fqCf63GdcCOAkUMCeFj3MS9r9IBHVhY4ZaoX3Zr3PsM/' \
-                 'edit#gid=1029704456https://docs.google.com/spreadsheets/d/1fqCf63GdcCOAkUMCeFj3MS9r9IBHVhY4' \
-                 'ZaoX3Zr3PsM/edit#gid=1029704456'
 
     @classmethod
     def get_excel_info(cls, project_name):
-        get_json = pygsheets.authorize(service_file=ExcelParser.setting_file)
-        open_by_url = get_json.open_by_url(ExcelParser.survey_url)
+        get_json = pygsheets.authorize(service_file=Const.SETTING_FILE)
+        open_by_url = get_json.open_by_url(Const.SURVEY_URL)
         worksheet = open_by_url.worksheet_by_title(project_name)
         data = worksheet.get_all_records()
         return data
 
     @classmethod
-    def exec(cls, project_name):
+    def parse_info(cls, project_name, is_open):
         excel_data = cls.get_excel_info(project_name=project_name)
-        cls.parse_info(excel_data=excel_data, project_name=project_name, is_open=True)
-        return 'POCKYYYYYYY'
-
-    @classmethod
-    def parse_info(cls, excel_data, project_name, is_open):
-        group_list = const.lead_list
-        story_list = list()
-        smell_story_list = list()
-
+        story_list, smell_story_list, pdm, title = list(), list(), None, None
         for excel in excel_data:
-            if excel['reporter']:
-                PDM = excel['reporter']
-            if excel['Epic_name']:
+            if excel['reporter'] or excel['Epic_name']:
+                pdm = excel['reporter']
                 title = excel['summary']
-            data = {
-                'issuetype': excel['issuetype'],
-                'summary': title + excel['summary'],
-                'description': excel['description'] or '-',
-                'assignee': {'name': PDM},
-                'reporter': {'name': PDM}
-            }
+            data = cls.get_story_info(excel=excel, title=title, pdm=pdm)
             for key, value in excel.items():
                 if key in excel and value == 'TRUE':
-                    new_data = {
-                        'issuetype': excel['issuetype'],
-                        'summary': title + excel['summary'] + key,
-                        'description': excel['description'] or '-',
-                        'assignee': {'name': f'{group_list[key]}'},
-                        'reporter': {'name': PDM}
-                    }
-                    smell_story_list.append(new_data)
-
+                    smell_story_list += [cls.get_story_info(excel=excel, key=key, pdm=pdm, title=title)]
             if excel['Epic_name'] != '':
                 data['customfield_10103'] = excel['Epic_name']
+                data['summary'] = title
             story_list.append(data)
-        issue_id_list = cls.input_jira(datas=story_list, project_name=project_name, mapping=True)
-        smell_issue_id_list = cls.input_jira(datas=smell_story_list, project_name=project_name, mapping=True)
-        cls.mapping_order(smell_issue_id_list=smell_issue_id_list, issue_id_list=issue_id_list)
-        cls.template(title=title, is_open=is_open)
+        template_list, id_list = cls.template(title=title, is_open=is_open)
+        return template_list, story_list, smell_story_list, id_list
 
     @classmethod
-    def template(cls, title, is_open):
-        if is_open is True:
-            datas = cls.get_excel_info(project_name='Template')
-            for data in datas:
-                match = data['summary'].split(' ')
-                result = match[0]
-                if result in const.lead_list_:
-                    data['assignee'] = {'name': f'{const.lead_list_[result]}'}
-                    data['summary'] = title + data['summary']
-            cls.input_jira(datas, project_name='PC', mapping=False)
-        return 'OK'
+    def input_jira_issue(cls, project_name, is_open):
+        id_list_ = list()
+        template_list, story_list, smell_story_list, id_list = cls.parse_info(project_name=project_name, is_open=is_open)
+        issue_id_list = cls.input_jira(datas=story_list, project_name=project_name, mapping=True, Epic=True)
+        smell_issue_id_list = cls.input_jira(datas=smell_story_list, project_name=project_name, mapping=True,
+                                             Epic=False)
+        template_id_list = cls.input_jira(datas=template_list, project_name=project_name, mapping=True, Epic=False)
+        for template in template_id_list:
+            id_list_.extend([template['id'] for id_ in id_list if id_ == template['name'].split(']')[1]])
+        return issue_id_list, smell_issue_id_list, template_id_list, template_list, id_list_
 
     @classmethod
-    def input_jira(cls, datas, project_name, mapping):
-        jira = JIRA(server=const.domain, basic_auth=(const.account, const.password))
-        id_list = list()
-        mapping_id = None
-        for data in datas:
-            data['project'] = project_name
-            issue_id = str(jira.create_issue(data))
-            if mapping is True:
-                id_list.append(issue_id)
-                mapping_id = cls.mapping_id(issue_id_list=id_list, datas=datas)
-        return mapping_id
-
-    @classmethod
-    def mapping_order(cls, smell_issue_id_list, issue_id_list):
-        jira = JIRA(server=const.domain, basic_auth=(const.account, const.password))
+    def mapping_order(cls, project_name, is_open):
         issue_id = None
+        issue_id_list, smell_issue_id_list, template_id_list, template_list, id_list = cls.input_jira_issue(
+            project_name=project_name, is_open=is_open)
+        jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
         for data in smell_issue_id_list:
             match = re.match(r'(.*)【', data['name'])
             match = match.group(1)
@@ -100,10 +61,50 @@ class ExcelParser:
                 if match == issue['name']:
                     issue_id = issue['id']
             # 大單id
+            for id_ in id_list:
+                jira.create_issue_link('relates to', issue_id, id_)
+            #     Template 單id
             jira.create_issue_link('relates to', issue_id, mapping_id)
 
     @classmethod
-    def mapping_id(cls, issue_id_list, datas):
+    def template(cls, title, is_open):
+        template_list = list()
+        id_list = list()
+        if is_open is True:
+            datas = cls.get_excel_info(project_name='Template')
+            for data in datas:
+                match = data['summary'].split(' ')
+                result = match[0]
+                if result in Const.lead_list_:
+                    data['assignee'] = Const.lead_list_[result]
+                if data['is_link'] == 'TRUE':
+                    id_list.append(data['summary'])
+                template_list += [cls.get_story_info(excel=data, title=title, pdm=data['assignee'], key=None)]
+        return template_list, id_list
+
+    @classmethod
+    def input_jira(cls, datas, project_name, mapping, Epic):
+        jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
+        id_list = list()
+        mapping_id = None
+        test = None
+        for data in datas:
+            data['project'] = project_name
+            issue_id = str(jira.create_issue(data))
+            if mapping is True or data['issuetype'] == Const.EPIC_CODE:
+                id_list.append(issue_id)
+                mapping_id = cls.get_mapping_id_list(issue_id_list=id_list, datas=datas)
+                # if data['issuetype'] == Const.EPIC_CODE:
+                test = issue_id
+        if Epic is True:
+            for mapping in mapping_id:
+                if test == mapping['id']:
+                    continue
+                jira.create_issue_link('relates to', mapping['id'], test)
+        return mapping_id
+
+    @classmethod
+    def get_mapping_id_list(cls, issue_id_list, datas):
         mapping_list = list()
         for i in range(len(issue_id_list)):
             data = {
@@ -113,6 +114,22 @@ class ExcelParser:
             mapping_list.append(data)
         return mapping_list
 
+    @classmethod
+    def get_story_info(cls, excel, title, pdm, key=None):
+        data = {
+            'issuetype': excel['issuetype'],
+            'summary': title + excel['summary'],
+            'description': excel['description'] or '自行填入',
+            'assignee': {'name': pdm},
+            'reporter': {'name': pdm}
+        }
+        if key is not None:
+            group_list = Const.lead_list
+            data['summary'] += key
+            data['assignee']['name'] = f'{group_list[key]}'
+        return data
+
 
 if __name__ == '__main__':
-    ExcelParser.exec(project_name='PC')
+    ExcelParser.mapping_order(project_name='PC', is_open=True)
+    # ExcelParser.mapping_order(project_name='PC')
