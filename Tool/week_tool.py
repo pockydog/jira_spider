@@ -14,7 +14,6 @@ class TimeTool:
             weekday = end_day.weekday()
             days_to_monday = datetime.timedelta(days=weekday)
             monday = end_day - days_to_monday
-
         else:
             today = datetime.datetime.now() - datetime.timedelta(days=7)
             monday = today - datetime.timedelta(days=today.weekday())
@@ -35,19 +34,20 @@ class TimeTool:
         取得本週 / 上週 的起始日期
         """
         today = datetime.datetime.today()
-
-        if this_week is True:
+        if this_week:
             days_difference = today.weekday() + 1
             sunday = today - datetime.timedelta(days=days_difference)
             days_difference = (5 - today.weekday())
             saturday = today + datetime.timedelta(days=days_difference)
-            return sunday.strftime("%Y-%m-%d"), saturday.strftime("%Y-%m-%d")
+            # return sunday.strftime("%Y-%m-%d"), saturday.strftime("%Y-%m-%d")
+            return '2024-02-01', '2024-02-29'
         else:
             days_difference = (today.weekday() + 1) + 7
             sunday = today - datetime.timedelta(days=days_difference)
             days_difference = (today.weekday() + 2)
             saturday = today - datetime.timedelta(days=days_difference)
             return sunday.strftime("%Y-%m-%d"), saturday.strftime("%Y-%m-%d")
+
 
     @classmethod
     def parse_week_(cls, this_week, rule=True):

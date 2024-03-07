@@ -26,7 +26,6 @@ class Jira:
     mapping_file_name = '.xlsx'
     type_ = '子任务'
 
-
     @classmethod
     def parse_query_info(cls):
         jira = JIRA(server=Jira.domain, basic_auth=(Jira.account, Jira.password))
@@ -35,7 +34,7 @@ class Jira:
         position = list()
         status = list()
         sprint_list = list()
-        test_list =list()
+        test_list = list()
 
         # boards = jira.boards(98)
         # print(boards)

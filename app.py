@@ -1,5 +1,6 @@
 from core.Jirs_spider import JiraTest
+# from Tool.group_tool import GroupTool
 
 if __name__ == '__main__':
-    JiraTest.get_person_info(this_week=False)
+    print(JiraTest.exec(this_week=True))
 

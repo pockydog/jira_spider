@@ -4,136 +4,127 @@ import re
 import Const
 
 
-class ExcelParser:
+class JiraAutoCreateIssue:
     def __init__(self, project_name, is_open):
         self.project_name = project_name
         self.is_open = is_open
 
-    def get_excel_info(self, project_name):
+    def get_excel_data(self, project_name):
+        """
+        取得Excel 資料，回傳Json格式
+        """
         get_json = pygsheets.authorize(service_file=Const.SETTING_FILE)
         open_by_url = get_json.open_by_url(Const.SURVEY_URL)
         worksheet = open_by_url.worksheet_by_title(project_name)
         data = worksheet.get_all_records()
         return data
 
-    def parse_info(self):
-        excel_data = self.get_excel_info(project_name=self.project_name)
+    def parse_infos(self):
+        """
+        將取得資料解析為Jira 可創單格式
+        """
+        excel_data = self.get_excel_data(project_name=self.project_name)  # excel資料
         feature_story_list, department_story_list, pdm, title = list(), list(), None, None
         for data in excel_data:
             if data['reporter'] or data['Epic_name']:
-                pdm = data['reporter']
-                title = data['summary']
-            feature_story_list += [self.get_story_info(excel=data, title=title, pdm=pdm)]
+                pdm = data['reporter']  # 定義項目PDM
+                project_title = data['summary']  # 定義項目標題名稱
+            feature_story_list += [self.parse_excel_data(excel=data, pdm=pdm, project_title=project_title)]
+            # 創建 Feature Story 單 / Epic 單 解析為Jira 可創單格式
             for key, value in data.items():
                 if key in data and value == 'TRUE':
-                    department_story_list += [self.get_story_info(excel=data, key=key, pdm=pdm, title=title)]
-        if self.is_open is True:
-            template_list, id_list = self.template(title=title, is_open=self.is_open)
-            return template_list, feature_story_list, department_story_list, id_list
-        else:
-            return feature_story_list, department_story_list
+                    department_story_list += [self.parse_excel_data(excel=data, key=key, pdm=pdm,
+                                                                    project_title=project_title)]
+                    # 創建 Department Story單 解析為Jira 可創單格式
+        template_list, template_link_id_list = self.parse_templat_data(project_title=project_title, pdm=pdm,
+                                                                       is_open=self.is_open)
+        # 創建 Template Story單 解析為Jira 可創單格式
+        return template_list, feature_story_list, department_story_list, template_link_id_list
 
-    def input_jira_issue(self):
-    #     id_list_ = list()
-        template_list, story_list, smell_story_list, id_list = self.parse_info()
-        issue_id_list = self.input_jira(datas=story_list, mapping=True, Epic=True)
-    #     smell_issue_id_list = self.input_jira(datas=smell_story_list, mapping=True, Epic=False)
-    #     template_id_list = self.input_jira(datas=template_list, mapping=True, Epic=False)
-    #
-    #     for template in template_id_list:
-    #         id_list_.extend([template['id'] for id_ in id_list if id_ == template['name'].split(']')[1]])
-    #
-    #     return issue_id_list, smell_issue_id_list, template_id_list, template_list, id_list_
-    #
-    # def mapping_order(self):
-    #     issue_id = None
-    #     issue_id_list, smell_issue_id_list, template_id_list, template_list, id_list = self.input_jira_issue()
-    #     jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
-    #
-    #     for data in smell_issue_id_list:
-    #         match = re.match(r'(.*)【', data['name'])
-    #         match = match.group(1)
-    #         mapping_id = data['id']
-    #
-    #         for issue in issue_id_list:
-    #             if match == issue['name']:
-    #                 issue_id = issue['id']
-    #
-    #         for id_ in id_list:
-    #             jira.create_issue_link('relates to', issue_id, id_)
-    #
-    #         jira.create_issue_link('relates to', issue_id, mapping_id)
-    #
-    def template(self, title, is_open):
+    def auto_create(self):
+        template_list, feature_story_list, department_story_list, template_link_id_list = self.parse_infos()
+        feature_story_id_list = self.input_jira(datas=feature_story_list, is_epic=True)  # 創建 feature story 單
+        self.input_jira(datas=department_story_list, info=feature_story_list)  # 創建 Department story 單
+        self.mapping_template_link(template_list=template_list, mapping_id_list=feature_story_id_list,
+                                   template_link_id_list=template_link_id_list)  # 創建 Template story
+
+    def mapping_template_link(self, template_list, mapping_id_list, template_link_id_list):
+        jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
+        for template in template_list:
+            template['project'] = self.project_name
+            issue_id = str(jira.create_issue(template))
+            template['id'] = issue_id
+
+            if template['summary'] in template_link_id_list:
+                template_link_id = template['id']
+                for issue in mapping_id_list:
+                    jira.create_issue_link('relates to', issue, template_link_id)
+
+    def parse_templat_data(self, project_title, pdm, is_open):
         template_list = list()
         id_list = list()
         if is_open is True:
-            datas = self.get_excel_info(project_name='Template')
+            datas = self.get_excel_data(project_name=Const.Template_sheet)
             for data in datas:
                 match = data['summary'].split(' ')
                 result = match[0]
                 if result in Const.lead_list_:
                     data['assignee'] = Const.lead_list_[result]
-                if data['is_link'] == 'TRUE':
-                    id_list.append(data['summary'])
-                template_list += [self.get_story_info(excel=data, title=title, pdm=data['assignee'], key=None)]
-            return template_list, id_list
-    #
-    def input_jira(self, datas, mapping, Epic):
-        jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
-        id_list = list()
-        mapping_id = None
-        test = None
+                if data['is_link'] == 'TRUE':  # 判斷是否該 Templat 需要Link Feature Story 單
+                    id_list.append(project_title + data['summary'])
+                template_list += [self.parse_excel_data(excel=data, project_title=project_title, pdm=pdm, key=None,
+                                                        Template={'name': data['assignee']})]
+        return template_list, id_list
 
+    def input_jira(self, datas, info=None, is_epic=None):
+        jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
+        Epic_id = None
+        issue_id_list = list()
         for data in datas:
             data['project'] = self.project_name
             issue_id = str(jira.create_issue(data))
+            data['id'] = issue_id
+            if info:
+                id_ = self.input_test(data=data, info=info)
+                jira.create_issue_link('relates to', issue_id, id_)
+            if is_epic:
+                if data['issuetype'] == Const.EPIC_CODE:
+                    Epic_id = data['id']
+                if Epic_id != data['id']:
+                    jira.create_issue_link('relates to', issue_id, Epic_id)
+                    issue_id_list.append(issue_id)
+        return issue_id_list
 
-            if mapping is True or data['issuetype'] == Const.EPIC_CODE:
-                id_list.append(issue_id)
-                mapping_id = self.get_mapping_id_list(issue_id_list=id_list, datas=datas)
-                test = issue_id
+    def input_test(self, data, info):
+        match = re.match(r'(.*)【', data['summary'])
+        match = match.group(1)
+        for _ in info:
+            if match == _['summary']:
+                return _['id']
 
-        if Epic is True:
-            for mapping in mapping_id:
-                if test == mapping['id']:
-                    continue
-                jira.create_issue_link('relates to', mapping['id'], test)
-
-        return mapping_id
-    #
-    # def get_mapping_id_list(self, issue_id_list, datas):
-    #     mapping_list = list()
-    #
-    #     for i in range(len(issue_id_list)):
-    #         data = {
-    #             'name': datas[i]['summary'],
-    #             'id': issue_id_list[i],
-    #         }
-    #         mapping_list.append(data)
-    #
-    #     return mapping_list
-
-    def get_story_info(self, excel, title, pdm, key=None):
+    def parse_excel_data(self, excel, project_title, pdm, key=None, Template=None):
         data = {
             'issuetype': excel['issuetype'],
-            'summary': title + excel['summary'],
+            'summary': project_title + excel['summary'],
             'description': excel['description'] or '自行填入',
             'assignee': {'name': pdm},
             'reporter': {'name': pdm}
         }
-        if excel['Epic_name'] != '':
-            data['customfield_10103'] = str(excel['Epic_name'])
-            data['summary'] = title
+        if data['issuetype'] == 'Epic':
+            data['customfield_10103'] = str(excel['summary'])
+            data['summary'] = project_title
+        if Template:
+            data['assignee'] = Template
 
         if key is not None:
             group_list = Const.lead_list
             data['summary'] += key
             data['assignee']['name'] = f'{group_list[key]}'
-
         return data
 
 
 if __name__ == '__main__':
-    parser = ExcelParser(project_name='PC', is_open=False)
-    print(parser.input_jira_issue())
+    parser = JiraAutoCreateIssue(project_name='PTRR', is_open=True)
+    parser.auto_create()
+# 創單模式要改，若只要Template 的單，需要爬下所有單來找單號，然後再來 Mapping 且涵蓋 link 功能
+# V2 a爬蟲 順便夾帶功能

@@ -2,7 +2,7 @@ import re
 
 
 class GroupTool:
-    group_list = ['QA', 'PM', 'Server', 'FE-RD', 'BE-RD', 'Design']
+    group_list = ['QA', 'PM', 'Server-RD', 'FE-RD', 'BE-RD', 'Design']
 
     @classmethod
     def get_group(cls, jira, group_list):
@@ -27,6 +27,7 @@ class GroupTool:
             'time': int(0)
         }
         member_list.append(member_)
+        print(member_list)
         return member_list
 
     @classmethod

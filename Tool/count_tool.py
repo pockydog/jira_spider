@@ -21,7 +21,6 @@ class CountTool:
             temp.append(time_list)
         if is_count is None:
             return temp
-
         if is_count is True:
             for i in temp:
                 a_list.append(str(sum(i)))
