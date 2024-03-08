@@ -1,8 +1,4 @@
 
-"""LogIn"""
-domain = 'https://jira.trevi.cc/'
-account = 'Vicky.C'
-password = 'Pocky1418'
 
 """IssueOrder"""
 lead_list = {
