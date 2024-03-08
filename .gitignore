@@ -4,3 +4,4 @@ test_by_vicky/test.py
 test_by_vicky/weekly_counter.py
 core/weekly_report.py
 *.xlxs
+Const.py

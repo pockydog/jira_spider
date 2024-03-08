@@ -33,8 +33,8 @@ class JiraTest:
                 groups=groups,
                 issue=issue
             )
-        person = JiraTest.get_project_by_person(project_list=project_list, groups=groups)
-        group = JiraTest.get_project_by_group(project_list=project_list)
+        person = cls.get_project_by_person(project_list=project_list, groups=groups)
+        group = cls.get_project_by_group(project_list=project_list)
         JiraTest.excel(info1=project_list, info2=person, info3=group)
         return True
 
