@@ -18,13 +18,13 @@ class JiraTest:
     def exec(cls, this_week):
 
         jira = JIRA(server=Const.domain, basic_auth=(Const.account, Const.password))
-        start, end = TimeTool.new_parse_week(this_week=this_week)
+        start_day, end_day = TimeTool.new_parse_week(this_week=this_week)
         groups = GroupTool.get_group(jira=jira, group_list=True)
-        result_list, spendtime_list, project_list, group_list = list(), list(), list(), list()
+        project_list = list()
 
-        # 下條件式, 利用JQL
-        issues = jira.search_issues(f'updated >= {start} AND updated <= now()', maxResults=0)
-        # 取得資料 解析
+        # 利用JQL, 下條件式
+        issues = jira.search_issues(f'updated >= {start_day} AND updated <= now()', maxResults=0)
+        # 取得資料並且解析
         for issue in tqdm(issues):
             worklogs = jira.worklogs(issue)
             project_list += JiraTest.get_worklog_info(
@@ -40,17 +40,16 @@ class JiraTest:
 
     @classmethod
     def get_project_by_person(cls, project_list, groups):
-        for time in project_list:
-            if time is None:
+        groups_dict = {group['name']: group for group in groups}
+        for project in project_list:
+            if project is None:
                 continue
-            else:
-                name = time['name']
-                time = float(time['spend_time'])
-                for g in groups:
-                    if g['name'] == name:
-                        g['time'] += float(time)
-
-        return groups
+            name = project['name']
+            project_time = float(project['spend_time'])  # 一次轉換，避免重複
+            if name in groups_dict:
+                groups_dict[name]['time'] += project_time
+        updated_groups = list(groups_dict.values())
+        return updated_groups
 
     @classmethod
     def get_project_by_group(cls, project_list):
@@ -83,43 +82,39 @@ class JiraTest:
     @classmethod
     def get_worklog_info(cls, worklogs, this_week, issue, groups):
         """
-            取得 all_worklog 資料
+        取得 all_worklog 資料
         """
         week = TimeTool.parse_week_(this_week=this_week, rule=True)
-        project_list, group_list, time_list, apple, issue_list, name_list, link_list, log_list = [[] for _ in range(8)]
+        results = list()
+
+        project_name = issue.fields.project.name
+        summary = issue.fields.summary
+        link = issue.permalink()
+
+        # 預先處理專案名稱
+        if project_name in [JiraTest.Design, JiraTest.PM]:
+            prog = re.compile('【.*?】')
+            re_content = prog.match(summary)
+            project_name = re_content.group() if re_content else project_name
+        else:
+            project_name = 'Design Team' if project_name == 'Design Team' else 'PM Team' if project_name == 'PM Team' else project_name
 
         for work in worklogs:
             parse = work.started[:10]
-            if parse in week:
-                link_list.append(issue.permalink())
-                log_list.append(work.comment)
-                issue_list.append(issue.fields.summary)
-                time_list.append(round(eval(CountTool.compute_cost(sp_time=work.timeSpent))))
-                name_list.append(str(re.sub(r'[^a-zA-Z,]', '', work.author.name)))
-                a = [g['group'] for g in groups if g['name'] == str(re.sub(r'[^a-zA-Z,]', '', work.author.name))]
-                group_list.append(re.sub(r'[^a-zA-Z,]', '', str(a)))
-                if issue.fields.project.name == JiraTest.Design or issue.fields.project.name == JiraTest.PM:
-                    prog = re.compile('【.*?】')
-                    re_content = prog.match(issue.fields.summary)
-                    if re_content:
-                        project_list.append(re_content.group())
-                    else:
-                        if issue.fields.project.name == 'Design Team':
-                            project_list.append('Design Team')
-                        elif issue.fields.project.name == 'PM Team':
-                            project_list.append('PM Team')
-                else:
-                    project_list.append(issue.fields.project.name)
+            if parse not in week:
+                continue
 
-        for project in range(len(project_list)):
-            result = {
-                'project': project_list[project],
-                'group': group_list[project],
-                'name': name_list[project],
-                'summary': issue_list[project],
-                'spend_time': time_list[project],
-                'link': link_list[project],
-                'log': log_list[project] or ''
-            }
-            apple.append(result)
-        return apple
+            author_name = re.sub(r'[^a-zA-Z,]', '', work.author.name)
+            group_name = next((g['group'] for g in groups if g['name'] == author_name), '')
+
+            results.append({
+                'project': project_name,
+                'group': re.sub(r'[^a-zA-Z,]', '', str(group_name)),
+                'name': author_name,
+                'summary': summary,
+                'spend_time': round(eval(CountTool.compute_cost(sp_time=work.timeSpent))),
+                'link': link,
+                'log': work.comment or ''
+            })
+
+        return results

@@ -13,7 +13,7 @@ class GroupTool:
         for group in GroupTool.group_list:
             group_members = jira.group_members(group)
             for member in group_members:
-                if group_list is True:
+                if group_list:
                     result = GroupTool.get_group_info(group=group, member=member, member_list=member_list)
                 else:
                     result = GroupTool.counter_for_group(group=group, member_set=member_set)
@@ -27,7 +27,6 @@ class GroupTool:
             'time': int(0)
         }
         member_list.append(member_)
-        print(member_list)
         return member_list
 
     @classmethod
